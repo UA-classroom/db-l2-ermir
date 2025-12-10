@@ -57,10 +57,12 @@ def get_password_hash(password: str) -> str:
         - Hash is one-way; original password cannot be retrieved.
         - Use verify_password to check if password matches hash.
     """
+
     return pwd_context.hash(password)
 
-# Alias for compatibility if needed, or just yse  get_password_hash directly
+# Alias for compatibility if needed, or just use  get_password_hash directly
 hash_password = get_password_hash
+
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
@@ -76,7 +78,9 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         - Timing-safe comparison to prevent timing attacks.
         - Always return False if verification fails.
     """
+
     return pwd_context.verify(plain_password, hashed_password)
+
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """
@@ -99,6 +103,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
         - Token automatically expires after specified time
         - "type" : "access" prevents misuse as refresh token
     """
+
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
@@ -108,6 +113,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     to_encode.update({"exp": expire, "type": "access"})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
 
 def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """
@@ -130,6 +136,7 @@ def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) 
         - Should be stored in httpOnly cookie or secure storage
         - Revoke refresh token on logout or password change
     """
+
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
@@ -139,6 +146,7 @@ def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) 
     to_encode.update({"exp": expire, "type": "refresh"})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
 
 def decode_token(token: str, expected_type: str = "access") -> dict:
     """
@@ -168,6 +176,7 @@ def decode_token(token: str, expected_type: str = "access") -> dict:
         - Expired tokens are automatically rejected
         - Invalid signatures (tampered tokens) are rejected
     """
+
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM])
         token_type = payload.get("type")

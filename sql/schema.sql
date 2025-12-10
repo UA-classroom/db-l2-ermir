@@ -377,7 +377,7 @@ CREATE TABLE notifications (
 
 CREATE TABLE location_images (
     id UUID PRIMARY KEY DEFAULT uuidv7(),
-    business_id UUID REFERENCES locations(id) ON DELETE CASCADE,
+    location_id UUID REFERENCES locations(id) ON DELETE CASCADE,
     url TEXT NOT NULL,
     alt_text VARCHAR(255),
     display_order INTEGER DEFAULT 0, -- For sorting (0 = primary image)

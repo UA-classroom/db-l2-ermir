@@ -3,3 +3,10 @@ venv
 .env
 .*env*
 description*
+
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+docs/

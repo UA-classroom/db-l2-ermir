@@ -1,0 +1,158 @@
+"""
+API Dependencies Module
+
+FastAPI dependency injection functions for authentication and database access.
+Provides reusable dependencies for JWT token validation, user authentication,
+and database connection management.
+"""
+from typing import Annotated, AsyncGenerator
+from uuid import UUID
+
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
+from psycopg import AsyncConnection
+from pydantic import ValidationError
+
+from app.config import settings
+from app.core.database import db
+from app.core.enums import RoleEnum
+from app.core.security import ALGORITHM
+from app.models.user import TokenData, UserDB
+from app.repositories.user_repository import UserRepository
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+
+async def get_db_conn() -> AsyncGenerator[AsyncConnection, None]:
+    """
+    Dependency to get a database connection from the pool.
+    Yields the connection and ensures it's closed (returned to pool) after use.
+    """
+    async with db.get_connection() as conn:
+        yield conn
+
+
+
+async def get_current_user(
+    token: Annotated[str, Depends(oauth2_scheme)],
+    conn: Annotated[AsyncConnection, Depends(get_db_conn)],
+) -> UserDB:
+    """
+    Dependency to get the current authenticated user from the JWT token.
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("sub")
+        if user_id is None:
+            raise credentials_exception
+
+        # Validate UUID format
+        try:
+            user_id_uuid = UUID(user_id)
+        except (ValueError, AttributeError):
+            raise credentials_exception
+
+        token_data = TokenData(
+            user_id=user_id_uuid, email=payload.get("email"), role=payload.get("role")
+        )
+    except (JWTError, ValidationError):
+        raise credentials_exception
+
+    user_repo = UserRepository(conn)
+    user = await user_repo.find_by_id(token_data.user_id)
+
+    if user is None:
+        raise credentials_exception
+
+    return user
+
+
+async def get_current_active_user(
+    current_user: Annotated[UserDB, Depends(get_current_user)],
+) -> UserDB:
+    """
+    Dependency to get the current active user.
+    """
+    if not current_user.is_active:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
+    
+
+async def get_current_provider(
+    current_user: Annotated[UserDB, Depends(get_current_active_user)],
+) -> UserDB:
+    """
+    Verify user has provider role.
+
+    Use this dependency to protect provider-only endpoints like
+    creating services, managing employees, or viewing bookings.
+
+    Args:
+        current_user: Authenticated active user
+
+    Returns:
+        User with provider role
+
+    Raises:
+        HTTPException: 403 if user is not a provider
+    """
+    if current_user.role != RoleEnum.PROVIDER:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Provider access required"
+        )
+    return current_user
+
+
+async def get_current_customer(
+    current_user: Annotated[UserDB, Depends(get_current_active_user)],
+) -> UserDB:
+    """
+    Verify user has customer role.
+
+    Use this dependency to protect customer-only endpoints.
+
+    Args:
+        current_user: Authenticated active user
+
+    Returns:
+        User with customer role
+
+    Raises:
+        HTTPException: 403 if user is not a customer
+    """
+    if current_user.role != RoleEnum.CUSTOMER:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Customer access required"
+        )
+    return current_user
+
+
+async def get_current_admin(
+    current_user: Annotated[UserDB, Depends(get_current_active_user)],
+) -> UserDB:
+    """
+    Verify user has admin role.
+
+    Use this dependency to protect admin-only endpoints like
+    creating new admin users or managing platform settings.
+
+    Args:
+        current_user: Authenticated active user
+
+    Returns:
+        User with admin role
+
+    Raises:
+        HTTPException: 403 if user is not an admin
+    """
+    if current_user.role != RoleEnum.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
+        )
+    return current_user

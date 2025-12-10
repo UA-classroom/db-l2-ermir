@@ -17,3 +17,23 @@ Ultimately, you can play around with a folder structure if you want to, but we'r
 5. Start the api using uvicorn app:app --reload
 6. Create some basic endpoints, maybe a basic get which fetches all entries for a table. Test it using postman or the built in swagger interface at localhost:8000/docs
 7. Create some basic database-functions that return results from a cursor, your endpoints should utilize these functions
+
+## Start Server
+```bash
+uvicorn app.main:app --reload
+```
+
+**Options:**
+- `--reload` - Auto-restart on code changes (dev only)
+- `--host 0.0.0.0` - Allow external connections
+- `--port 8000` - Custom port (default: 8000)
+
+**Access:**
+- API: http://localhost:8000
+- Swagger docs: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
+
+## Reset Database & Seed Data
+```bash
+python scripts/reset_db.py
+```
