@@ -17,8 +17,11 @@ from pydantic import ValidationError
 from app.config import settings
 from app.core.database import db
 from app.core.enums import RoleEnum
+from app.core.exceptions import NotFoundError
 from app.core.security import ALGORITHM
 from app.models.user import TokenData, UserDB
+from app.repositories.business_repository import BusinessRepository
+from app.repositories.service_repository import ServiceRepository
 from app.repositories.user_repository import UserRepository
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
@@ -156,3 +159,110 @@ async def get_current_admin(
             status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
         )
     return current_user
+
+async def verify_business_ownership(
+    business_id: UUID, current_user: UserDB, conn: AsyncConnection
+):
+    """
+    Verify that current user owns the business.
+
+    Args:
+        business_id: Business UUID to verify
+        current_user: Current authenticated user
+        conn: Database connection
+
+    Raises:
+        NotFoundError: If business not found
+        HTTPException: 403 if user doesn't own the business
+    """
+    
+
+    business_repo = BusinessRepository(conn)
+    business = await business_repo.get_business_by_id(business_id)
+
+    if not business:
+        raise NotFoundError(f"Business {business_id} not found")
+
+    if business.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have permission to access this business",
+        )
+    
+
+async def verify_service_ownership(
+    service_id: UUID, current_user: UserDB, conn: AsyncConnection
+):
+    """
+    Verify that current user owns the service (via business ownership).
+
+    Args:
+        service_id: Service UUID to verify
+        current_user: Current authenticated user
+        conn: Database connection
+
+    Raises:
+        NotFoundError: If service not found
+        HTTPException: 403 if user doesn't own the service's business
+    """
+
+    service_repo = ServiceRepository(conn)
+    service = await service_repo.get_service_by_id(service_id)
+
+    if not service:
+        raise NotFoundError(f"Service {service_id} not found")
+
+    # Verify business ownership
+    await verify_business_ownership(service.business_id, current_user, conn)
+
+
+async def verify_location_ownership(
+    location_id: UUID, current_user: UserDB, conn: AsyncConnection
+):
+    """
+    Verify that current user owns the location (via business ownership).
+
+    Args:
+        location_id: Location UUID to verify
+        current_user: Current authenticated user
+        conn: Database connection
+
+    Raises:
+        NotFoundError: If location not found
+        HTTPException: 403 if user doesn't own the location's business
+    """
+
+    business_repo = BusinessRepository(conn)
+    location = await business_repo.get_location_by_id(location_id)
+
+    if not location:
+        raise NotFoundError(f"Location {location_id} not found")
+
+    # Verify business ownership
+    await verify_business_ownership(location.business_id, current_user, conn)
+
+
+async def verify_contact_ownership(
+    contact_id: int, current_user: UserDB, conn: AsyncConnection
+):
+    """
+    Verify that current user owns the contact (via location → business ownership).
+
+    Args:
+        contact_id: Contact ID to verify
+        current_user: Current authenticated user
+        conn: Database connection
+
+    Raises:
+        NotFoundError: If contact not found
+        HTTPException: 403 if user doesn't own the contact's business
+    """
+
+    business_repo = BusinessRepository(conn)
+    contact = await business_repo.get_contact_by_id(contact_id)
+
+    if not contact:
+        raise NotFoundError(f"Contact {contact_id} not found")
+
+    # Verify location ownership (which verifies business ownership)
+    await verify_location_ownership(contact.location_id, current_user, conn)

@@ -8,6 +8,8 @@ from psycopg import errors as pg_errors
 
 from app.api.v1.admin import router as admin_router
 from app.api.v1.auth import router as auth_router
+from app.api.v1.businesses import router as businesses_router
+from app.api.v1.services import router as services_router
 from app.api.v1.users import router as users_router
 from app.config import settings
 from app.core.database import db
@@ -70,6 +72,8 @@ if settings.BACKEND_CORS_ORIGINS:
 app.include_router(admin_router, prefix=f"{settings.API_V1_STR}")
 app.include_router(auth_router, prefix=f"{settings.API_V1_STR}")
 app.include_router(users_router, prefix=f"{settings.API_V1_STR}")
+app.include_router(businesses_router, prefix=f"{settings.API_V1_STR}")
+app.include_router(services_router, prefix=f"{settings.API_V1_STR}")
 
 @app.get("/")
 async def root():

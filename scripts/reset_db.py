@@ -5,14 +5,16 @@ import platform
 import sys
 from pathlib import Path
 
+# Add project root to path BEFORE imports
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
 from app.config import settings
 from app.core.database import db
 from scripts.seeds.core.roles import seed_roles
 from scripts.seeds.core.users import seed_users
-
-# Add project root to path
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+from scripts.seeds.core.businesses import seed_businesses
+from scripts.seeds.core.services import seed_services
 
 
 
@@ -59,6 +61,8 @@ async def run_seeds(conn, only=None):
     seeds = [
         ("roles", seed_roles),
         ("users", seed_users),
+        ("businesses", seed_businesses),
+        ("services", seed_services),
     ]
 
     # Filter if --only specified

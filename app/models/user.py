@@ -4,12 +4,11 @@ User Models Module
 Pydantic models for user-related data validation and serialization.
 """
 import re
-from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import AwareDatetime, BaseModel, EmailStr, Field, field_validator
 from pydantic.config import ConfigDict
 
 from app.core.enums import RoleEnum
@@ -61,7 +60,7 @@ class UserDB(UserBase):
     role: Optional[RoleEnum] = None
     password_hash: str
     is_active: bool
-    created_at: datetime
+    created_at: AwareDatetime
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -72,7 +71,7 @@ class UserResponse(UserBase):
     id: UUID
     role: Optional[RoleEnum] = None
     is_active: bool
-    created_at: datetime
+    created_at: AwareDatetime
 
     model_config = ConfigDict(from_attributes=True)
 

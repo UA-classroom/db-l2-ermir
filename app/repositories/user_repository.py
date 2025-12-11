@@ -14,7 +14,7 @@ This repository uses the BaseRepository pattern and includes:
 from typing import Any, Optional
 from uuid import UUID
 
-from psycopg import AsyncConnection
+from psycopg import AsyncConnection, sql
 
 from app.core.enums import RoleEnum
 from app.models.user import AddressResponse, UserDB
@@ -101,10 +101,13 @@ class UserRepository(BaseRepository[UserDB]):
             role_name = role_name.value
 
         async with self.conn.transaction():
-            # 1. Insert user
-            columns = ", ".join(data.keys())
-            placeholders = ", ".join(["%s"] * len(data))
-            query = f"INSERT INTO users ({columns}) VALUES ({placeholders}) RETURNING *"
+            # 1. Insert user - Build column list securely using sql.SQL and sql.Identifier
+            columns = sql.SQL(", ").join([sql.Identifier(k) for k in data.keys()])
+            placeholders = sql.SQL(", ").join([sql.SQL("%s")] * len(data))
+            query = sql.SQL("INSERT INTO users ({columns}) VALUES ({placeholders}) RETURNING *").format(
+                columns=columns,
+                placeholders=placeholders
+            )
 
             async with self.conn.cursor() as cur:
                 await cur.execute(query, tuple(data.values()))  # type: ignore[arg-type]
@@ -192,11 +195,18 @@ class UserRepository(BaseRepository[UserDB]):
 
     async def update_address(
         self, address_id: UUID, user_id: UUID, data: dict
-    ) -> Optional[Any]:
+    ) -> Optional[AddressResponse]:
         """Update an address (only if it belongs to the user)."""
 
-        set_clause = ", ".join([f"{k} = %s" for k in data.keys()])
-        query = f"UPDATE user_addresses SET {set_clause} WHERE id = %s AND user_id = %s RETURNING *"
+        # Build SET clause securely using sql.SQL and sql.Identifier
+        set_parts = [
+            sql.SQL("{} = %s").format(sql.Identifier(k))
+            for k in data.keys()
+        ]
+        set_clause = sql.SQL(", ").join(set_parts)
+        query = sql.SQL("UPDATE user_addresses SET {set_clause} WHERE id = %s AND user_id = %s RETURNING *").format(
+            set_clause=set_clause
+        )
         params = tuple(data.values()) + (address_id, user_id)
         return await self._execute_one(query, params, AddressResponse)
 
