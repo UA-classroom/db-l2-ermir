@@ -20,7 +20,9 @@ from app.core.enums import RoleEnum
 from app.core.exceptions import NotFoundError
 from app.core.security import ALGORITHM
 from app.models.user import TokenData, UserDB
+from app.repositories.booking_repository import BookingRepository
 from app.repositories.business_repository import BusinessRepository
+from app.repositories.employee_repository import EmployeeRepository
 from app.repositories.service_repository import ServiceRepository
 from app.repositories.user_repository import UserRepository
 
@@ -266,3 +268,104 @@ async def verify_contact_ownership(
 
     # Verify location ownership (which verifies business ownership)
     await verify_location_ownership(contact.location_id, current_user, conn)
+
+
+async def verify_booking_ownership(
+    booking_id: UUID, current_user: UserDB, conn: AsyncConnection
+):
+    """
+    Verify that current user owns the booking.
+
+    - Customer can access their own bookings
+    - Provider can access bookings for their locations
+
+    Args:
+        booking_id: Booking UUID to verify
+        current_user: Current authenticated user
+        conn: Database connection
+
+    Raises:
+        NotFoundError: If booking not found
+        HTTPException: 403 if user doesn't have permission
+    """
+
+    booking_repo = BookingRepository(conn)
+    booking = await booking_repo.get_booking_by_id(booking_id)
+
+    if not booking:
+        raise NotFoundError(f"Booking {booking_id} not found")
+
+    # Customer can access their own bookings
+    if booking.customer.id == current_user.id:
+        return
+
+    # Provider can access bookings for their locations
+    if current_user.role == RoleEnum.PROVIDER:
+        await verify_location_ownership(booking.location_id, current_user, conn)
+        return
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="You don't have permission to access this booking",
+    )
+
+
+async def verify_employee_ownership(
+    employee_id: UUID, current_user: UserDB, conn: AsyncConnection
+):
+    """
+    Verify that current user owns the employee (via location ownership).
+
+    - Provider can access employees for their locations
+
+    Args:
+        employee_id: Employee UUID to verify
+        current_user: Current authenticated user (must be provider)
+        conn: Database connection
+
+    Raises:
+        NotFoundError: If employee not found
+        HTTPException: 403 if user doesn't own the employee's location
+    """
+    
+    employee_repo = EmployeeRepository(conn)
+    employee = await employee_repo.get_employee_by_id(employee_id)
+
+    if not employee:
+        raise NotFoundError(f"Employee {employee_id} not found")
+
+    # Verify location ownership
+    await verify_location_ownership(employee.location_id, current_user, conn)
+
+
+async def validate_booking_creation(
+    booking_data, current_user: UserDB, conn: AsyncConnection
+):
+    """
+    Validate that current user can create this booking.
+
+    Rules:
+    - CUSTOMER: Can only book for themselves
+    - PROVIDER: Can only book on their own locations
+    - ADMIN: Can book for anyone (support/testing)
+    """
+
+    if current_user.role == RoleEnum.CUSTOMER:
+        if booking_data.customer_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Customers can only create bookings for themselves",
+            )
+
+    elif current_user.role == RoleEnum.PROVIDER:
+        await verify_location_ownership(booking_data.location_id, current_user, conn)
+
+    elif current_user.role == RoleEnum.ADMIN:
+        # Admin can book for anyone
+        pass
+
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid role for booking creation",
+        )
