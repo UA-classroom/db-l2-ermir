@@ -25,6 +25,7 @@ from app.repositories.booking_repository import BookingRepository
 from app.repositories.business_repository import BusinessRepository
 from app.repositories.employee_repository import EmployeeRepository
 from app.repositories.order_repository import OrderRepository
+from app.repositories.product_repository import ProductRepository
 from app.repositories.service_repository import ServiceRepository
 from app.repositories.user_repository import UserRepository
 
@@ -443,3 +444,18 @@ async def validate_order_creation(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Invalid role for order creation",
         )
+    
+
+async def verify_product_ownership(
+    product_id: UUID, current_user: UserDB, conn: AsyncConnection
+):
+    """Verify that current user owns the product's location."""
+
+    product_repo = ProductRepository(conn)
+    product = await product_repo.get_product_by_id(product_id)
+
+    if not product:
+        raise NotFoundError(f"Product {product_id} not found")
+
+    # Verify location ownership (cascades to business ownership)
+    await verify_location_ownership(product.location_id, current_user, conn)

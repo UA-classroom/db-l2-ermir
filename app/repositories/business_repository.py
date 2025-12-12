@@ -208,7 +208,7 @@ class BusinessRepository(BaseRepository[BusinessResponse]):
         Returns:
             Location or None if not found
         """
-        query = "SELECT * FROM locations WHERE id = %s"
+        query = "SELECT * FROM locations WHERE id = %s AND deleted_at IS NULL"
         return await self._execute_one(query, (location_id,), LocationResponse)
     
 

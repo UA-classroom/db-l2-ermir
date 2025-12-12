@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from uuid import UUID
 
@@ -49,8 +49,8 @@ class BookingService:
         for wh in working_hours:
             if wh.day_of_week == day_of_week:
                 # Convert times to comparable format
-                work_start = datetime.combine(start_time.date(), wh.start_time)
-                work_end = datetime.combine(start_time.date(), wh.end_time)
+                work_start = datetime.combine(start_time.date(), wh.start_time).replace(tzinfo=timezone.utc)
+                work_end = datetime.combine(start_time.date(), wh.end_time).replace(tzinfo=timezone.utc)
                 booking_start = start_time
                 booking_end = end_time
 
