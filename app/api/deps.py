@@ -19,10 +19,12 @@ from app.core.database import db
 from app.core.enums import RoleEnum
 from app.core.exceptions import NotFoundError
 from app.core.security import ALGORITHM
+from app.models.order import OrderCreate
 from app.models.user import TokenData, UserDB
 from app.repositories.booking_repository import BookingRepository
 from app.repositories.business_repository import BusinessRepository
 from app.repositories.employee_repository import EmployeeRepository
+from app.repositories.order_repository import OrderRepository
 from app.repositories.service_repository import ServiceRepository
 from app.repositories.user_repository import UserRepository
 
@@ -310,6 +312,46 @@ async def verify_booking_ownership(
     )
 
 
+async def verify_order_ownership(
+    order_id: UUID, current_user: UserDB, conn: AsyncConnection
+):
+    """
+    Verify that current user owns the order.
+
+    - Customer can access their own orders
+    - Provider can access orders for their locations
+
+    Args:
+        order_id: Order UUID to verify
+        current_user: Current authenticated user
+        conn: Database connection
+
+    Raises:
+        NotFoundError: If order not found
+        HTTPException: 403 if user doesn't have permission
+    """
+
+    order_repo = OrderRepository(conn)
+    order = await order_repo.get_order_by_id(order_id)
+
+    if not order:
+        raise NotFoundError(f"Order {order_id} not found")
+
+    # Customer can access their own orders
+    if order.customer_id == current_user.id:
+        return
+
+    # Provider can access orders for their locations
+    if current_user.role == RoleEnum.PROVIDER:
+        await verify_location_ownership(order.location_id, current_user, conn)
+        return
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="You don't have permission to access this order",
+    )
+
+
 async def verify_employee_ownership(
     employee_id: UUID, current_user: UserDB, conn: AsyncConnection
 ):
@@ -368,4 +410,36 @@ async def validate_booking_creation(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Invalid role for booking creation",
+        )
+    
+
+async def validate_order_creation(
+    order_data: "OrderCreate", current_user: UserDB, conn: AsyncConnection
+):
+    """
+    Validate that user can create order.
+
+    Rules:
+    - CUSTOMER: Can only create orders for themselves
+    - PROVIDER: Can create orders for their locations
+    - ADMIN: Can create orders for anyone
+    """
+    if current_user.role == RoleEnum.CUSTOMER:
+        if order_data.customer_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Customers can only create orders for themselves",
+            )
+
+    elif current_user.role == RoleEnum.PROVIDER:
+        await verify_location_ownership(order_data.location_id, current_user, conn)
+
+    elif current_user.role == RoleEnum.ADMIN:
+        # Admin can create orders for anyone
+        pass
+
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid role for order creation",
         )

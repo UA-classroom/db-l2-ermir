@@ -15,6 +15,11 @@ from scripts.seeds.core.roles import seed_roles
 from scripts.seeds.core.users import seed_users
 from scripts.seeds.core.businesses import seed_businesses
 from scripts.seeds.core.services import seed_services
+from scripts.seeds.core.booking_statuses import seed_booking_statuses
+from scripts.seeds.core.employees import seed_employees
+from scripts.seeds.core.bookings import seed_bookings
+from scripts.seeds.core.coupons import seed_coupons
+from scripts.seeds.core.orders import seed_orders
 
 
 
@@ -63,6 +68,11 @@ async def run_seeds(conn, only=None):
         ("users", seed_users),
         ("businesses", seed_businesses),
         ("services", seed_services),
+        ("booking_statuses", seed_booking_statuses),
+        ("employees", seed_employees),
+        ("bookings", seed_bookings),
+        ("coupons", seed_coupons),
+        ("orders", seed_orders),
     ]
 
     # Filter if --only specified

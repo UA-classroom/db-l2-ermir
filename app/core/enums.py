@@ -37,3 +37,30 @@ class BookingStatusEnum(str, Enum):
             "no_show": 5,
         }
         return status_map[self.value]
+    
+
+class PaymentStatusEnum(str, Enum):
+    """Payment status values."""
+
+    PENDING = "pending"
+    PAID = "paid"
+    FAILED = "failed"
+    REFUNDED = "refunded"
+
+
+class PaymentMethodEnum(str, Enum):
+    """Payment method values."""
+
+    CARD = "card"
+    KLARNA = "klarna"
+    SWISH = "swish"
+    GIFT_CARD = "gift_card"
+    CLIPPING_CARD = "clipping_card"
+
+
+class DiscountTypeEnum(str, Enum):
+    """Discount type for coupons."""
+
+    PERCENT = "percent"
+    FIXED = "fixed"
+    

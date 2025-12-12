@@ -1,8 +1,8 @@
-from datetime import datetime, time
+from datetime import time as Time
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 
 class EmployeeBase(BaseModel):
@@ -40,8 +40,8 @@ class EmployeeResponse(EmployeeBase):
 class WorkingHoursBase(BaseModel):
     """Base working hours fields."""
     day_of_week: int = Field(ge=1, le=7, description="1=Monday, 7=Sunday")
-    start_time: time
-    end_time: time
+    start_time: Time
+    end_time: Time
 
 
 class WorkingHoursCreate(WorkingHoursBase):
@@ -51,8 +51,8 @@ class WorkingHoursCreate(WorkingHoursBase):
 
 class WorkingHoursUpdate(BaseModel):
     """Working hours update request."""
-    start_time: Optional[time] = None
-    end_time: Optional[time] = None
+    start_time: Optional[Time] = None
+    end_time: Optional[Time] = None
 
 
 class WorkingHoursResponse(WorkingHoursBase):
@@ -66,8 +66,8 @@ class WorkingHoursResponse(WorkingHoursBase):
 class InternalEventBase(BaseModel):
     """Base internal event fields."""
     type: str = Field(max_length=50, description="e.g., 'vacation', 'sick', 'meeting'")
-    start_time: datetime
-    end_time: datetime
+    start_time: AwareDatetime
+    end_time: AwareDatetime
     description: Optional[str] = None
 
 
@@ -79,8 +79,8 @@ class InternalEventCreate(InternalEventBase):
 class InternalEventUpdate(BaseModel):
     """Internal event update request."""
     type: Optional[str] = Field(None, max_length=50)
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
+    start_time: Optional[AwareDatetime] = None
+    end_time: Optional[AwareDatetime] = None
     description: Optional[str] = None
 
 
