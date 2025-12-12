@@ -459,3 +459,30 @@ async def verify_product_ownership(
 
     # Verify location ownership (cascades to business ownership)
     await verify_location_ownership(product.location_id, current_user, conn)
+
+
+async def verify_review_creation(
+    booking_id: UUID,
+    current_user: UserDB,
+    conn: AsyncConnection,
+) -> None:
+    """
+    Verify that user can create review for booking.
+
+    Only the customer who made the booking can review it.
+    """
+    booking_repo = BookingRepository(conn)
+    booking = await booking_repo.get_booking_by_id(booking_id)
+
+    if not booking:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Booking {booking_id} not found",
+        )
+
+    # Only the customer who made the booking can review it
+    if booking.customer.id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only review your own bookings",
+        )

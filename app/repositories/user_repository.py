@@ -110,7 +110,7 @@ class UserRepository(BaseRepository[UserDB]):
             )
 
             async with self.conn.cursor() as cur:
-                await cur.execute(query, tuple(data.values()))  # type: ignore[arg-type]
+                await cur.execute(query, tuple(data.values()))  
                 user_row = await cur.fetchone()
                 if not user_row:
                     raise RuntimeError(f"Failed to create user: {data}")
