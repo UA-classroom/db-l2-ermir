@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Annotated, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from psycopg import AsyncConnection
 
 from app.api.deps import (
@@ -11,7 +11,7 @@ from app.api.deps import (
     verify_employee_ownership,
     verify_location_ownership,
 )
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import BadRequestError, NotFoundError
 from app.models.employee import (
     AvailabilityResponse,
     EmployeeCreate,
@@ -24,6 +24,7 @@ from app.models.employee import (
     WorkingHoursResponse,
 )
 from app.models.user import UserDB
+from app.repositories.booking_repository import BookingRepository
 from app.repositories.employee_repository import EmployeeRepository
 from app.services.schedule_service import ScheduleService
 
@@ -35,7 +36,7 @@ async def get_employees(
     conn: Annotated[AsyncConnection, Depends(get_db_conn)],
     location_id: Optional[UUID] = Query(None, description="Filter by location ID"),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
-    skip: int = Query(0, ge=0),
+    offset: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
 ):
     """
@@ -43,7 +44,7 @@ async def get_employees(
 
     - **location_id**: Filter by location UUID
     - **is_active**: Filter by active status (true/false)
-    - **skip**: Number of results to skip (pagination)
+    - **offset**: Number of results to skip (pagination)
     - **limit**: Maximum number of results (max 100)
     """
     repo = EmployeeRepository(conn)
@@ -51,7 +52,7 @@ async def get_employees(
         location_id=location_id,
         is_active=is_active,
         limit=limit,
-        offset=skip,
+        offset=offset,
     )
 
 
@@ -97,7 +98,8 @@ async def get_employee_schedule(
     if not employee:
         raise NotFoundError(f"Employee {employee_id} not found")
 
-    schedule_service = ScheduleService(repo)
+    booking_repo = BookingRepository(conn)
+    schedule_service = ScheduleService(repo, booking_repo)
     return await schedule_service.get_employee_schedule(
         employee_id, start_date, end_date
     )
@@ -129,10 +131,7 @@ async def add_working_hours(
 
     # Ensure the employee_id in the path matches the one in the body
     if working_hours_data.employee_id != employee_id:
-        raise HTTPException(
-            status_code=400,
-            detail="Employee ID mismatch between path and body"
-        )
+        raise BadRequestError("Employee ID mismatch between path and body")
 
     repo = EmployeeRepository(conn)
     return await repo.add_working_hours(working_hours_data)
@@ -165,10 +164,7 @@ async def add_internal_event(
 
     # Ensure the employee_id in the path matches the one in the body
     if event_data.employee_id != employee_id:
-        raise HTTPException(
-            status_code=400,
-            detail="Employee ID mismatch between path and body"
-        )
+        raise BadRequestError("Employee ID mismatch between path and body")
 
     repo = EmployeeRepository(conn)
     return await repo.add_internal_event(event_data)
@@ -281,7 +277,8 @@ async def check_employee_availability(
     employee = await repo.get_employee_by_id(employee_id)
     if not employee:
         raise NotFoundError(f"Employee {employee_id} not found")
-    schedule_service = ScheduleService(repo)
+    booking_repo = BookingRepository(conn)
+    schedule_service = ScheduleService(repo, booking_repo)
     return await schedule_service.check_availability(employee_id, start_time, end_time)
 
 
@@ -301,6 +298,7 @@ async def get_employee_internal_events(
         raise NotFoundError(f"Employee {employee_id} not found")
     return await repo.get_employee_internal_events(employee_id, start_date, end_date)
 
+
 @router.get("/{employee_id}/available-slots", response_model=list[dict])
 async def get_available_slots(
     employee_id: UUID,
@@ -318,7 +316,8 @@ async def get_available_slots(
     employee = await repo.get_employee_by_id(employee_id)
     if not employee:
         raise NotFoundError(f"Employee {employee_id} not found")
-    schedule_service = ScheduleService(repo)
+    booking_repo = BookingRepository(conn)
+    schedule_service = ScheduleService(repo, booking_repo)
     return await schedule_service.get_available_slots(
         employee_id, date, duration_minutes, slot_interval_minutes
     )
