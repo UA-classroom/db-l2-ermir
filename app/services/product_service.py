@@ -53,7 +53,8 @@ class ProductService:
 
     async def create_product(self, product_data: ProductCreate) -> ProductResponse:
         """Create new product with validation."""
-        # Could add business logic here (e.g., check location exists)
+        # TODO: Refactor - this is a pass-through method with no business logic.
+        # Consider calling repository directly from API endpoint (pragmatic pattern).
         return await self.product_repo.create_product(product_data.model_dump())
 
     async def update_product(
