@@ -11,10 +11,11 @@ Key Features:
 - Location and contact management for businesses
 - Provider-only endpoints protected by role-based authorization
 """
+
 from typing import Annotated, Optional, Union
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query
 from psycopg import AsyncConnection
 
 from app.api.deps import (
@@ -24,7 +25,7 @@ from app.api.deps import (
     verify_contact_ownership,
     verify_location_ownership,
 )
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import BadRequestError, ForbiddenError, NotFoundError
 from app.models.business import (
     BusinessCreate,
     BusinessResponse,
@@ -34,6 +35,7 @@ from app.models.business import (
     ContactUpdate,
     LocationCreate,
     LocationResponse,
+    LocationSearchResult,
     LocationUpdate,
 )
 from app.models.service import ServiceDetail, ServiceResponse
@@ -42,6 +44,26 @@ from app.repositories.business_repository import BusinessRepository
 from app.repositories.service_repository import ServiceRepository
 
 router = APIRouter(prefix="/businesses", tags=["Businesses"])
+
+@router.get("/locations", response_model=list[LocationSearchResult])
+async def get_locations(
+    conn: Annotated[AsyncConnection, Depends(get_db_conn)],
+    query: Optional[str] = Query(None, description="Search by name or business"),
+    city: Optional[str] = Query(None, description="Filter by city"),
+    category: Optional[str] = Query(None, description="Filter by category"),
+    offset: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
+):
+    """
+    Get locations (shops) across all businesses.
+
+    Returns specific locations with their address and parent business info.
+    """
+    repo = BusinessRepository(conn)
+    return await repo.get_locations(
+        query=query, city=city, category=category, offset=offset, limit=limit
+    )
+
 
 @router.get("/", response_model=list[BusinessResponse])
 async def get_businesses(
@@ -52,7 +74,7 @@ async def get_businesses(
     min_rating: Optional[float] = Query(
         None, ge=1, le=5, description="Minimum average rating (1-5)"
     ),
-    skip: int = Query(0, ge=0),
+    offset: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
 ):
     """
@@ -62,7 +84,7 @@ async def get_businesses(
     - **name**: Filter by business name (case-insensitive partial match)
     - **category**: Filter by category (e.g., "Hair", "Nails", "Spa")
     - **min_rating**: Minimum average rating (1-5 stars)
-    - **skip**: Number of results to skip (pagination)
+    - **offset**: Number of results to skip (pagination)
     - **limit**: Maximum number of results (max 100)
     """
     repo = BusinessRepository(conn)
@@ -72,7 +94,7 @@ async def get_businesses(
         category=category,
         min_rating=min_rating,
         limit=limit,
-        offset=skip,
+        offset=offset,
     )
 
 
@@ -146,7 +168,7 @@ async def get_business_services(
         return await service_repo.get_services_with_variants(business_id)
     else:
         return await service_repo.get_services(business_id=business_id, is_active=True)
-    
+
 
 @router.get("/locations/{location_id}/contacts", response_model=list[ContactResponse])
 async def get_location_contacts(
@@ -178,11 +200,8 @@ async def create_business(
     """
     # Verify that user_id in request matches current user
     if business.owner_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only create businesses for yourself",
-        )
-    
+        raise ForbiddenError("You can only create businesses for yourself")
+
     repo = BusinessRepository(conn)
     return await repo.create_business(business)
 
@@ -235,9 +254,8 @@ async def create_location(
     repo = BusinessRepository(conn)
     # Ensure business_id in request matches path parameter
     if location_data.business_id != business_id:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Business ID in body ({location_data.business_id}) does not match path parameter ({business_id})",
+        raise BadRequestError(
+            f"Business ID in body ({location_data.business_id}) does not match path parameter ({business_id})"
         )
 
     return await repo.create_location(location_data)
@@ -267,6 +285,7 @@ async def update_location(
     repo = BusinessRepository(conn)
     return await repo.update_location(location_id, location_data)
 
+
 @router.post(
     "/locations/{location_id}/contacts", response_model=ContactResponse, status_code=201
 )
@@ -289,9 +308,8 @@ async def create_contact(
     repo = BusinessRepository(conn)
     # Ensure location_id in request matches path parameter
     if contact_data.location_id != location_id:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Location ID in body ({contact_data.location_id}) does not match path parameter ({location_id})",
+        raise BadRequestError(
+            f"Location ID in body ({contact_data.location_id}) does not match path parameter ({location_id})"
         )
 
     return await repo.create_contact(contact_data)
