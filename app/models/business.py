@@ -119,7 +119,7 @@ class ContactUpdate(BaseModel):
 class ContactResponse(ContactBase):
     """Contact response."""
 
-    id: UUID
+    id: int
     location_id: UUID
 
     model_config = ConfigDict(from_attributes=True)
@@ -129,3 +129,12 @@ class BusinessDetail(BusinessResponse):
     """Business with nested locations."""
 
     locations: list[LocationResponse] = []
+
+
+class LocationSearchResult(LocationResponse):
+    """Location search result with business details."""
+
+    business_name: str
+    primary_category: Optional[str] = None
+    average_rating: float = 0.0
+    review_count: int = 0
