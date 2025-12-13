@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Query, status
 from psycopg import AsyncConnection
 
 from app.api.deps import (
+    get_booking_service,
     get_current_active_user,
     get_current_provider,
     get_db_conn,
@@ -25,23 +26,9 @@ from app.models.booking import (
 from app.models.employee import AvailabilityResponse
 from app.models.user import UserDB
 from app.repositories.booking_repository import BookingRepository
-from app.repositories.employee_repository import EmployeeRepository
-from app.repositories.service_repository import ServiceRepository
 from app.services.booking_service import BookingService
-from app.services.schedule_service import ScheduleService
 
 router = APIRouter(prefix="/bookings", tags=["Bookings"])
-
-
-def get_booking_service(
-    conn: Annotated[AsyncConnection, Depends(get_db_conn)],
-) -> BookingService:
-    """Dependency to get BookingService instance."""
-    booking_repo = BookingRepository(conn)
-    employee_repo = EmployeeRepository(conn)
-    service_repo = ServiceRepository(conn)
-    schedule_service = ScheduleService(employee_repo, booking_repo)
-    return BookingService(booking_repo, employee_repo, service_repo, schedule_service)
 
 
 @router.post("/", response_model=BookingResponse, status_code=status.HTTP_201_CREATED)

@@ -29,9 +29,10 @@ from app.repositories.order_repository import OrderRepository
 from app.repositories.product_repository import ProductRepository
 from app.repositories.service_repository import ServiceRepository
 from app.repositories.user_repository import UserRepository
+from app.services.booking_service import BookingService
+from app.services.schedule_service import ScheduleService
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
-
 
 async def get_db_conn() -> AsyncGenerator[AsyncConnection, None]:
     """
@@ -40,6 +41,51 @@ async def get_db_conn() -> AsyncGenerator[AsyncConnection, None]:
     """
     async with db.get_connection() as conn:
         yield conn
+
+
+def get_booking_repo(
+    conn: Annotated[AsyncConnection, Depends(get_db_conn)]
+) -> BookingRepository:
+    """Dependency to get a BookingRepository instance."""
+    return BookingRepository(conn)
+
+
+def get_employee_repo(
+    conn: Annotated[AsyncConnection, Depends(get_db_conn)]
+) -> EmployeeRepository:
+    """Dependency to get an EmployeeRepository instance."""
+    return EmployeeRepository(conn)
+
+
+def get_service_repo(
+    conn: Annotated[AsyncConnection, Depends(get_db_conn)]
+) -> ServiceRepository:
+    """Dependency to get a ServiceRepository instance."""
+    return ServiceRepository(conn)
+
+
+def get_schedule_service(
+    employee_repo: Annotated[EmployeeRepository, Depends(get_employee_repo)],
+    booking_repo: Annotated[BookingRepository, Depends(get_booking_repo)],
+) -> ScheduleService:
+    """Dependency to get a ScheduleService instance."""
+    return ScheduleService(employee_repo=employee_repo, booking_repo=booking_repo)
+
+
+def get_booking_service(
+    booking_repo: Annotated[BookingRepository, Depends(get_booking_repo)],
+    employee_repo: Annotated[EmployeeRepository, Depends(get_employee_repo)],
+    service_repo: Annotated[ServiceRepository, Depends(get_service_repo)],
+    schedule_service: Annotated[ScheduleService, Depends(get_schedule_service)],
+) -> BookingService:
+    """Dependency to get a BookingService instance."""
+    return BookingService(
+        booking_repo=booking_repo,
+        employee_repo=employee_repo,
+        service_repo=service_repo,
+        schedule_service=schedule_service,
+    )
+
 
 
 async def get_current_user(
