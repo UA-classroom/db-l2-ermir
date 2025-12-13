@@ -46,7 +46,7 @@ async def get_services(
     business_id: Optional[UUID] = Query(None, description="Filter by business ID"),
     category_id: Optional[int] = Query(None, description="Filter by category ID"),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
-    skip: int = Query(0, ge=0),
+    offset: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
 ):
     """
@@ -55,7 +55,7 @@ async def get_services(
     - **business_id**: Filter by business UUID
     - **category_id**: Filter by category ID
     - **is_active**: Filter by active status (true/false)
-    - **skip**: Number of results to skip (pagination)
+    - **offset**: Number of results to skip (pagination)
     - **limit**: Maximum number of results (max 100)
     """
     repo = ServiceRepository(conn)
@@ -64,24 +64,24 @@ async def get_services(
         category_id=category_id,
         is_active=is_active,
         limit=limit,
-        offset=skip,
+        offset=offset,
     )
 
 
 @router.get("/categories", response_model=list[CategoryResponse])
 async def get_categories(
     conn: Annotated[AsyncConnection, Depends(get_db_conn)],
-    skip: int = Query(0, ge=0),
+    offset: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
 ):
     """
     Get all service categories.
 
-    - **skip**: Number of results to skip (pagination)
+    - **offset**: Number of results to skip (pagination)
     - **limit**: Maximum number of results (max 100)
     """
     repo = ServiceRepository(conn)
-    return await repo.get_categories(limit=limit, offset=skip)
+    return await repo.get_categories(limit=limit, offset=offset)
 
 
 @router.get("/{service_id}", response_model=ServiceResponse)
