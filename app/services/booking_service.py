@@ -1,17 +1,18 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
 from app.core.exceptions import ConflictError, NotFoundError
 from app.models.booking import (
-    AvailabilityResponse,
     BookingCreate,
     BookingResponse,
     BookingUpdate,
 )
+from app.models.employee import AvailabilityResponse
 from app.repositories.booking_repository import BookingRepository
 from app.repositories.employee_repository import EmployeeRepository
 from app.repositories.service_repository import ServiceRepository
+from app.services.schedule_service import ScheduleService
 
 
 class BookingService:
@@ -21,73 +22,23 @@ class BookingService:
         self,
         booking_repo: BookingRepository,
         employee_repo: EmployeeRepository,
-        service_repo: ServiceRepository
+        service_repo: ServiceRepository,
+        schedule_service: "ScheduleService",
     ):
         self.booking_repo = booking_repo
         self.employee_repo = employee_repo
         self.service_repo = service_repo
+        self.schedule_service = schedule_service
 
     async def check_availability(
-        self,
-        employee_id: UUID,
-        start_time: datetime,
-        end_time: datetime
+        self, employee_id: UUID, start_time: datetime, end_time: datetime
     ) -> AvailabilityResponse:
         """
-        Multi-step availability algorithm.
-
-        Step 1: Check employee working hours
-        Step 2: Check conflicting bookings
-        Step 3: Check internal events
-        Step 4: Return available or specific conflict reason
+        Check availability using ScheduleService.
         """
-        # Step 1: Check employee working hours
-        day_of_week = start_time.isoweekday()  # 1=Monday, 7=Sunda
-        working_hours = await self.employee_repo.get_employee_working_hours(employee_id)
-
-        is_working = False
-        for wh in working_hours:
-            if wh.day_of_week == day_of_week:
-                # Convert times to comparable format
-                work_start = datetime.combine(start_time.date(), wh.start_time).replace(tzinfo=timezone.utc)
-                work_end = datetime.combine(start_time.date(), wh.end_time).replace(tzinfo=timezone.utc)
-                booking_start = start_time
-                booking_end = end_time
-
-                if booking_start >= work_start and booking_end <= work_end:
-                    is_working = True
-                    break
-
-        if not is_working:
-            return AvailabilityResponse(
-                is_available=False,
-                reason="Employee is not working during this time"
-            )
-
-        # Step 2: Check conflicting bookings
-        conflicting_bookings = await self.booking_repo.get_employee_bookings_in_range(
+        return await self.schedule_service.check_availability(
             employee_id, start_time, end_time
         )
-
-        if conflicting_bookings:
-            return AvailabilityResponse(
-                is_available=False,
-                reason="Employee has conflicting booking"
-            )
-
-        # Step 3: Check internal events
-        internal_events = await self.employee_repo.get_employee_internal_events(
-            employee_id, start_time, end_time
-        )
-
-        if internal_events:
-            return AvailabilityResponse(
-                is_available=False,
-                reason="Employee has internal event (vacation/sick)"
-            )
-
-        # Step 4: Return available
-        return AvailabilityResponse(is_available=True, reason=None)
 
     async def calculate_booking_price(
         self,
@@ -222,3 +173,58 @@ class BookingService:
             raise NotFoundError(f"Booking {booking_id} not found")
 
         return cancelled_booking
+    
+
+    async def get_available_slots_for_booking(
+        self,
+        date: datetime,
+        service_variant_id: UUID,
+        location_id: UUID,
+        employee_id: UUID | None = None,
+    ) -> list[dict]:
+        """
+        Get aggregated available slots for a booking.
+
+        1. Determine Service Duration.
+        2. Identify candidate employees (specific or all at location).
+        3. For each employee, calculate free slots using ScheduleService.
+        4. Aggregate results into a list of {start_time, [employee_ids]}.
+        """
+        from app.services.schedule_service import ScheduleService
+
+        # 1. Get Service Duration
+        variant = await self.service_repo.get_service_variant_by_id(service_variant_id)
+        if not variant:
+            raise NotFoundError("Service variant not found")
+        duration = variant.duration_minutes
+
+        # 2. Identify Employees
+        employees_to_check = []
+        if employee_id:
+            emp = await self.employee_repo.get_employee_by_id(employee_id)
+            if not emp:
+                raise NotFoundError(f"Employee {employee_id} not found")
+            employees_to_check.append(emp)
+        else:
+            # Fetch all employees at location
+            employees_to_check = await self.employee_repo.get_employees(
+                location_id=location_id
+            )
+
+        # 3. Calculate Slots
+        schedule_service = ScheduleService(self.employee_repo, self.booking_repo)
+        slots_map = {}  # start_time -> list[employee_id]
+
+        for emp in employees_to_check:
+            emp_slots = await schedule_service.get_available_slots(
+                emp.id, date, duration
+            )
+            for slot in emp_slots:
+                s_time = slot["start_time"]
+                if s_time not in slots_map:
+                    slots_map[s_time] = []
+                slots_map[s_time].append(emp.id)
+
+        # 4. Format Response
+        sorted_times = sorted(slots_map.keys())
+        return [{"start_time": t, "employee_ids": slots_map[t]} for t in sorted_times]
