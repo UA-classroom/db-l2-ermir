@@ -7,10 +7,11 @@ Includes admin-only endpoint for listing all users.
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from psycopg import AsyncConnection
 
 from app.api.deps import get_current_active_user, get_current_admin, get_db_conn
+from app.core.exceptions import BadRequestError, NotFoundError, UnauthorizedError
 from app.core.security import get_password_hash, verify_password
 from app.models.auth import PasswordChangeRequest
 from app.models.user import (
@@ -39,12 +40,12 @@ async def read_users_me(
 async def read_users(
     conn: Annotated[AsyncConnection, Depends(get_db_conn)],
     current_admin: Annotated[UserDB, Depends(get_current_admin)],
-    skip: int = 0,
+    offset: int = 0,
     limit: int = 100,
 ):
     """Retrieve all users (admin-only)."""
     repo = UserRepository(conn)
-    return await repo.find_all(limit=limit, offset=skip)
+    return await repo.find_all(limit=limit, offset=offset)
 
 
 @router.put("/me", response_model=UserResponse)
@@ -67,7 +68,7 @@ async def change_password(
 ):
     """Change current user password."""
     if not verify_password(data.current_password, current_user.password_hash):
-        raise HTTPException(status_code=400, detail="Incorrect password")
+        raise UnauthorizedError("Incorrect password")
 
     repo = UserRepository(conn)
     new_hash = get_password_hash(data.new_password)
@@ -124,11 +125,11 @@ async def update_address(
     # Only update fields that are provided
     update_data = {k: v for k, v in data.model_dump().items() if v is not None}
     if not update_data:
-        raise HTTPException(status_code=400, detail="No fields to update")
+        raise BadRequestError("No fields to update")
 
     updated = await repo.update_address(address_id, current_user.id, update_data)
     if not updated:
-        raise HTTPException(status_code=404, detail="Address not found")
+        raise NotFoundError("Address not found")
     return updated
 
 
@@ -142,4 +143,4 @@ async def delete_address(
     repo = UserRepository(conn)
     deleted = await repo.delete_address(address_id, current_user.id)
     if not deleted:
-        raise HTTPException(status_code=404, detail="Address not found")
+        raise NotFoundError("Address not found")
