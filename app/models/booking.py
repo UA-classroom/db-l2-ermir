@@ -112,9 +112,9 @@ class AvailabilityRequest(BaseModel):
     start_time: datetime
     end_time: datetime
 
+# TODO: Delete it after tested works
+#class AvailabilityResponse(BaseModel):
+ #   """Availability response."""
 
-class AvailabilityResponse(BaseModel):
-    """Availability response."""
-
-    is_available: bool
-    reason: Optional[str] = Field(None, description="Reason if not available")
+ #   is_available: bool
+ #   reason: Optional[str] = Field(None, description="Reason if not available")
