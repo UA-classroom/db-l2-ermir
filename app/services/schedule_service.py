@@ -7,6 +7,7 @@ from app.models.employee import (
     InternalEventResponse,
     WorkingHoursResponse,
 )
+from app.repositories.booking_repository import BookingRepository
 from app.repositories.employee_repository import EmployeeRepository
 
 
@@ -18,8 +19,11 @@ class ScheduleService:
     when employees are available to take bookings.
     """
 
-    def __init__(self, employee_repo: EmployeeRepository):
+    def __init__(
+        self, employee_repo: EmployeeRepository, booking_repo: BookingRepository
+    ):
         self.employee_repo = employee_repo
+        self.booking_repo = booking_repo
 
     async def check_availability(
         self,
@@ -192,7 +196,7 @@ class ScheduleService:
         employee_id: UUID,
         date: datetime,
         duration_minutes: int,
-        slot_interval_minutes: int = 30
+        slot_interval_minutes: int = 30,
     ) -> list[dict]:
         """
         Get available time slots for an employee on a specific date.
@@ -217,10 +221,17 @@ class ScheduleService:
         if not working_hours:
             return []
 
-        # Get internal events for this date
+        # Define day range for fetching events and bookings
         day_start = date.replace(hour=0, minute=0, second=0, microsecond=0)
         day_end = date.replace(hour=23, minute=59, second=59, microsecond=999999)
+
+        # Get internal events
         internal_events = await self.employee_repo.get_employee_internal_events(
+            employee_id, day_start, day_end
+        )
+
+        # Get existing bookings
+        bookings = await self.booking_repo.get_employee_bookings_in_range(
             employee_id, day_start, day_end
         )
 
@@ -241,15 +252,41 @@ class ScheduleService:
                 # Check if this slot conflicts with any internal event
                 has_conflict = False
                 for event in internal_events:
-                    if self._times_overlap(current_slot_start, slot_end, event.start_time, event.end_time):
+                    if self._times_overlap(
+                        current_slot_start, slot_end, event.start_time, event.end_time
+                    ):
                         has_conflict = True
                         break
 
+                # Check conflicts with existing bookings
                 if not has_conflict:
-                    available_slots.append({
-                        "start_time": current_slot_start.isoformat(),
-                        "end_time": slot_end.isoformat(),
-                    })
+                    for booking in bookings:
+                        # booking.start_time is offset-aware usually, ensure comparison compatibility
+                        # Assuming repos return compatible types or using replacement below
+                        b_start = (
+                            booking.start_time.replace(tzinfo=None)
+                            if booking.start_time.tzinfo
+                            else booking.start_time
+                        )
+                        b_end = (
+                            booking.end_time.replace(tzinfo=None)
+                            if booking.end_time.tzinfo
+                            else booking.end_time
+                        )
+
+                        if self._times_overlap(
+                            current_slot_start, slot_end, b_start, b_end
+                        ):
+                            has_conflict = True
+                            break
+
+                if not has_conflict:
+                    available_slots.append(
+                        {
+                            "start_time": current_slot_start.isoformat(),
+                            "end_time": slot_end.isoformat(),
+                        }
+                    )
 
                 # Move to next slot
                 current_slot_start += timedelta(minutes=slot_interval_minutes)
