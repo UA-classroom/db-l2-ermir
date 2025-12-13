@@ -1,7 +1,8 @@
+from datetime import datetime
 from typing import Annotated, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from psycopg import AsyncConnection
 
 from app.api.deps import (
@@ -12,21 +13,22 @@ from app.api.deps import (
     verify_booking_ownership,
     verify_location_ownership,
 )
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import BadRequestError, NotFoundError
 from app.models.booking import (
     AvailabilityRequest,
-    AvailabilityResponse,
     BookingCreate,
     BookingDetail,
     BookingResponse,
     BookingUpdate,
     StatusUpdateRequest,
 )
+from app.models.employee import AvailabilityResponse
 from app.models.user import UserDB
 from app.repositories.booking_repository import BookingRepository
 from app.repositories.employee_repository import EmployeeRepository
 from app.repositories.service_repository import ServiceRepository
 from app.services.booking_service import BookingService
+from app.services.schedule_service import ScheduleService
 
 router = APIRouter(prefix="/bookings", tags=["Bookings"])
 
@@ -38,7 +40,8 @@ def get_booking_service(
     booking_repo = BookingRepository(conn)
     employee_repo = EmployeeRepository(conn)
     service_repo = ServiceRepository(conn)
-    return BookingService(booking_repo, employee_repo, service_repo)
+    schedule_service = ScheduleService(employee_repo, booking_repo)
+    return BookingService(booking_repo, employee_repo, service_repo, schedule_service)
 
 
 @router.post("/", response_model=BookingResponse, status_code=status.HTTP_201_CREATED)
@@ -64,8 +67,7 @@ async def check_availability(
     """Check availability."""
     # Validate time range
     if availability_request.end_time <= availability_request.start_time:
-
-        raise HTTPException(status_code=400, detail="end_time must be after start_time")
+        raise BadRequestError("end_time must be after start_time")
 
     return await booking_service.check_availability(
         availability_request.employee_id,
@@ -100,7 +102,6 @@ async def get_booking(
     booking_repo = BookingRepository(conn)
     booking = await booking_repo.get_booking_by_id(booking_id)
     if not booking:
-
         raise NotFoundError(f"Booking {booking_id} not found")
     return booking
 
@@ -136,7 +137,6 @@ async def update_booking_status(
         booking_id, status_data.status.value
     )
     if not updated:
-
         raise NotFoundError(f"Booking {booking_id} not found")
     return updated
 
@@ -152,7 +152,25 @@ async def delete_booking(
     await verify_booking_ownership(booking_id, current_user, conn)
 
     booking_repo = BookingRepository(conn)
-    await booking_repo.delete_booking(booking_id)
+    await booking_repo.delete_booking(booking_id) 
+
+
+@router.get("/slots", response_model=list[dict])
+async def get_booking_slots(
+    booking_service: Annotated[BookingService, Depends(get_booking_service)],
+    date: datetime = Query(..., description="Date to check"),
+    service_variant_id: UUID = Query(..., description="Service Variant ID"),
+    location_id: UUID = Query(..., description="Location ID"),
+    employee_id: Optional[UUID] = Query(None, description="Optional specific employee"),
+):
+    """
+    Get available time slots for booking.
+
+    Returns list of slots with start_time and list of available_employee_ids.
+    """
+    return await booking_service.get_available_slots_for_booking(
+        date, service_variant_id, location_id, employee_id
+    )
 
 
 @router.get("/locations/{location_id}", response_model=list[BookingResponse])
