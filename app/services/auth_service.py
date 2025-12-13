@@ -8,11 +8,11 @@ Includes user signup, login, and token management.
 from datetime import timedelta
 from uuid import UUID
 
-from fastapi import HTTPException, status
+
 from psycopg import AsyncConnection
 
 from app.config import settings
-from app.core.exceptions import UnauthorizedError
+from app.core.exceptions import ConflictError, UnauthorizedError
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -51,10 +51,7 @@ class AuthService:
         """
         try:
             if await self.user_repo.email_exists(data.email):
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail="Email already registered",
-                )
+                raise ConflictError("Email already registered")
 
             hashed_password = get_password_hash(data.password)
 
@@ -63,14 +60,11 @@ class AuthService:
             user_data["role"] = "customer"  # Hardcoded customer role
 
             return await self.user_repo.create(user_data)
-        except HTTPException:
+        except ConflictError:
             raise
         except Exception as e:
             if "users_email_key" in str(e):
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail="Email already registered",
-                )
+                raise ConflictError("Email already registered")
             raise
 
     async def register_provider(self, data: ProviderRegisterRequest) -> UserDB:
@@ -88,10 +82,7 @@ class AuthService:
         """
         try:
             if await self.user_repo.email_exists(data.email):
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail="Email already registered",
-                )
+                raise ConflictError("Email already registered")
 
             hashed_password = get_password_hash(data.password)
 
@@ -100,14 +91,11 @@ class AuthService:
             user_data["role"] = "provider"  # Hardcoded provider role
 
             return await self.user_repo.create(user_data)
-        except HTTPException:
+        except ConflictError:
             raise
         except Exception as e:
             if "users_email_key" in str(e):
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail="Email already registered",
-                )
+                raise ConflictError("Email already registered")
             raise
 
     async def authenticate_user(self, data: LoginRequest) -> UserDB:
