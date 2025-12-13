@@ -33,9 +33,10 @@ from app.models.business import (
     ContactUpdate,
     LocationCreate,
     LocationResponse,
+    LocationSearchResult,
     LocationUpdate,
 )
-from app.models.service import ServiceResponse  # TODO:Implementera methoden
+from app.models.service import ServiceResponse
 from app.repositories.base import BaseRepository
 
 
@@ -293,6 +294,80 @@ class BusinessRepository(BaseRepository[BusinessResponse]):
             return await self.get_business_by_id(business_id)
 
         return await self._update("businesses", business_id, data, BusinessResponse)
+    
+
+    async def get_locations(
+        self,
+        city: Optional[str] = None,
+        query: Optional[str] = None,
+        category: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[LocationSearchResult]:
+        """
+        Get locations across all businesses with optional filters.
+
+        Args:
+            city: Filter by city
+            query: Search query (business name or location name)
+            category: Filter by category
+            limit: Max results
+            offset: Pagination offset
+
+        Returns:
+            List of locations with business details
+        """
+        #TODO: legacy code - using b.created_at...Need created_at column at location table
+
+        sql_query = """
+            SELECT 
+                l.*,
+                b.created_at,
+                b.name as business_name,
+                COALESCE(AVG(r.rating), 0) as average_rating,
+                COUNT(DISTINCT r.id) as review_count,
+                (
+                    SELECT c.name 
+                    FROM services s 
+                    LEFT JOIN categories c ON s.category_id = c.id 
+                    WHERE s.business_id = b.id 
+                    LIMIT 1
+                ) as primary_category
+            FROM locations l
+            JOIN businesses b ON l.business_id = b.id
+            LEFT JOIN bookings bk ON l.id = bk.location_id AND bk.deleted_at IS NULL
+            LEFT JOIN reviews r ON bk.id = r.booking_id
+            WHERE l.deleted_at IS NULL AND b.deleted_at IS NULL
+        """
+        params = []
+
+        if city:
+            sql_query += " AND l.city ILIKE %s"
+            params.append(f"%{city}%")
+
+        if query:
+            sql_query += " AND (b.name ILIKE %s OR l.name ILIKE %s)"
+            params.append(f"%{query}%")
+            params.append(f"%{query}%")
+
+        # Category filter needs to check services
+        if category:
+            sql_query += """
+                AND EXISTS (
+                    SELECT 1 FROM services s
+                    JOIN categories c ON s.category_id = c.id
+                    WHERE s.business_id = b.id AND c.name ILIKE %s
+                )
+            """
+            params.append(f"%{category}%")
+
+        sql_query += " GROUP BY l.id, b.id, b.name, b.created_at"
+        sql_query += (
+            " ORDER BY average_rating DESC, b.created_at DESC LIMIT %s OFFSET %s"
+        )
+        params.extend([limit, offset])
+
+        return await self._execute_many(sql_query, tuple(params), LocationSearchResult)
     
 
     async def create_location(self, location_data: LocationCreate) -> LocationResponse:
