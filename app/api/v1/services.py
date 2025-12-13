@@ -15,6 +15,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 from psycopg import AsyncConnection
+from pydantic import Field
 
 from app.api.deps import (
     get_current_admin,
@@ -46,8 +47,8 @@ async def get_services(
     business_id: Optional[UUID] = Query(None, description="Filter by business ID"),
     category_id: Optional[int] = Query(None, description="Filter by category ID"),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
-    offset: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=100),
+    offset: Annotated[int, Field(ge=0)] = 0, # Use Field for validation
+    limit: Annotated[int, Field(ge=1, le=100)] = 100, # Use Field for validation
 ):
     """
     Get list of services with optional filters.
@@ -71,8 +72,8 @@ async def get_services(
 @router.get("/categories", response_model=list[CategoryResponse])
 async def get_categories(
     conn: Annotated[AsyncConnection, Depends(get_db_conn)],
-    offset: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=100),
+    offset: Annotated[int, Field(ge=0)] = 0, # Use Field for validation
+    limit: Annotated[int, Field(ge=1, le=100)] = 100, # Use Field for validation
 ):
     """
     Get all service categories.

@@ -13,7 +13,7 @@ from app.core.enums import RoleEnum
 from app.core.security import hash_password
 from app.main import app
 from app.models.business import BusinessCreate, LocationCreate
-from app.models.employee import EmployeeCreate
+from app.models.employee import EmployeeCreate, WorkingHoursCreate
 from app.models.service import CategoryCreate, ServiceCreate, ServiceVariantCreate
 from app.repositories.business_repository import BusinessRepository
 from app.repositories.employee_repository import EmployeeRepository
@@ -263,9 +263,6 @@ async def test_employee_id(
     employee = await repo.create_employee(employee_data)
 
     # Add working hours for all days
-
-    from app.models.employee import WorkingHoursCreate
-
     for day in range(1, 8):  # 1=Mon, 7=Sun
         hours_data = WorkingHoursCreate(
             employee_id=employee.id,

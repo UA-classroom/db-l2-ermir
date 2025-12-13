@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # Database Configuration
+    
     DB_HOST: str
     DB_PORT: int = 5432
     DB_USER: str
