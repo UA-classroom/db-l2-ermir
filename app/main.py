@@ -12,6 +12,8 @@ from app.api.v1.bookings import router as bookings_router
 from app.api.v1.businesses import router as businesses_router
 from app.api.v1.employees import router as employees_router
 from app.api.v1.orders import router as orders_router
+from app.api.v1.products import router as products_router
+from app.api.v1.reviews import router as reviews_router
 from app.api.v1.services import router as services_router
 from app.api.v1.users import router as users_router
 from app.config import settings
@@ -80,6 +82,8 @@ app.include_router(services_router, prefix=f"{settings.API_V1_STR}")
 app.include_router(employees_router, prefix=f"{settings.API_V1_STR}")
 app.include_router(bookings_router, prefix=f"{settings.API_V1_STR}")
 app.include_router(orders_router, prefix=f"{settings.API_V1_STR}")
+app.include_router(products_router, prefix=f"{settings.API_V1_STR}")
+app.include_router(reviews_router, prefix=f"{settings.API_V1_STR}")
 
 @app.get("/")
 async def root():
