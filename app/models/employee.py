@@ -95,7 +95,7 @@ class InternalEventResponse(InternalEventBase):
 class AvailabilityResponse(BaseModel):
     """Employee availability response."""
     is_available: bool
-    reason: Optional[str] = None  # Reason if not available (e.g., "Not working on this day", "Has internal event")
+    reason: Optional[str] = Field(None, description="Reason if not available")
 
 
 class EmployeeScheduleResponse(BaseModel):
