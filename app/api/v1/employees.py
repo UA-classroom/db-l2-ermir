@@ -11,7 +11,7 @@ from app.api.deps import (
     verify_employee_ownership,
     verify_location_ownership,
 )
-from app.core.exceptions import BadRequestError, NotFoundError
+from app.core.exceptions import BadRequestError, ConflictError, NotFoundError
 from app.models.employee import (
     AvailabilityResponse,
     EmployeeCreate,
@@ -134,7 +134,10 @@ async def add_working_hours(
         raise BadRequestError("Employee ID mismatch between path and body")
 
     repo = EmployeeRepository(conn)
-    return await repo.add_working_hours(working_hours_data)
+    try:
+        return await repo.add_working_hours(working_hours_data)
+    except ValueError as e:
+        raise ConflictError(str(e))
 
 
 @router.post(

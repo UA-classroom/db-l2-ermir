@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from psycopg import AsyncConnection
+from psycopg import AsyncConnection, sql
 from psycopg.rows import class_row
 
 from app.models.employee import (
@@ -46,7 +46,6 @@ class EmployeeRepository(BaseRepository[EmployeeResponse]):
         Returns:
             List of employees
         """
-        from psycopg import sql
 
         conditions = []
         params = []

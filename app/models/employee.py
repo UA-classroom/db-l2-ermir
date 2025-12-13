@@ -2,7 +2,7 @@ from datetime import time as Time
 from typing import Optional
 from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
 
 class EmployeeBase(BaseModel):
@@ -48,11 +48,24 @@ class WorkingHoursCreate(WorkingHoursBase):
     """Working hours creation request."""
     employee_id: UUID
 
+    @model_validator(mode="after")
+    def validate_time_range(self):
+        if self.end_time <= self.start_time:
+            raise ValueError("end_time must be after start_time")
+        return self
+
 
 class WorkingHoursUpdate(BaseModel):
     """Working hours update request."""
     start_time: Optional[Time] = None
     end_time: Optional[Time] = None
+
+    @model_validator(mode="after")
+    def validate_time_range(self):
+        if self.start_time and self.end_time:
+            if self.end_time <= self.start_time:
+                raise ValueError("end_time must be after start_time")
+        return self
 
 
 class WorkingHoursResponse(WorkingHoursBase):
@@ -75,6 +88,12 @@ class InternalEventCreate(InternalEventBase):
     """Internal event creation request."""
     employee_id: UUID
 
+    @model_validator(mode="after")
+    def validate_time_range(self):
+        if self.end_time <= self.start_time:
+            raise ValueError("end_time must be after start_time")
+        return self
+
 
 class InternalEventUpdate(BaseModel):
     """Internal event update request."""
@@ -82,6 +101,13 @@ class InternalEventUpdate(BaseModel):
     start_time: Optional[AwareDatetime] = None
     end_time: Optional[AwareDatetime] = None
     description: Optional[str] = None
+
+    @model_validator(mode="after")
+    def validate_time_range(self):
+        if self.start_time and self.end_time:
+            if self.end_time <= self.start_time:
+                raise ValueError("end_time must be after start_time")
+        return self
 
 
 class InternalEventResponse(InternalEventBase):
