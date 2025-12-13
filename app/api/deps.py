@@ -5,6 +5,7 @@ FastAPI dependency injection functions for authentication and database access.
 Provides reusable dependencies for JWT token validation, user authentication,
 and database connection management.
 """
+
 from typing import Annotated, AsyncGenerator
 from uuid import UUID
 
@@ -17,7 +18,7 @@ from pydantic import ValidationError
 from app.config import settings
 from app.core.database import db
 from app.core.enums import RoleEnum
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import ForbiddenError, NotFoundError, UnauthorizedError
 from app.core.security import ALGORITHM
 from app.models.order import OrderCreate
 from app.models.user import TokenData, UserDB
@@ -31,6 +32,7 @@ from app.repositories.user_repository import UserRepository
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
+
 async def get_db_conn() -> AsyncGenerator[AsyncConnection, None]:
     """
     Dependency to get a database connection from the pool.
@@ -38,7 +40,6 @@ async def get_db_conn() -> AsyncGenerator[AsyncConnection, None]:
     """
     async with db.get_connection() as conn:
         yield conn
-
 
 
 async def get_current_user(
@@ -88,9 +89,9 @@ async def get_current_active_user(
     Dependency to get the current active user.
     """
     if not current_user.is_active:
-        raise HTTPException(status_code=400, detail="Inactive user")
+        raise UnauthorizedError("Inactive user")
     return current_user
-    
+
 
 async def get_current_provider(
     current_user: Annotated[UserDB, Depends(get_current_active_user)],
@@ -111,9 +112,7 @@ async def get_current_provider(
         HTTPException: 403 if user is not a provider
     """
     if current_user.role != RoleEnum.PROVIDER:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Provider access required"
-        )
+        raise ForbiddenError("Provider access required")
     return current_user
 
 
@@ -135,9 +134,7 @@ async def get_current_customer(
         HTTPException: 403 if user is not a customer
     """
     if current_user.role != RoleEnum.CUSTOMER:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Customer access required"
-        )
+        raise ForbiddenError("Customer access required")
     return current_user
 
 
@@ -160,10 +157,9 @@ async def get_current_admin(
         HTTPException: 403 if user is not an admin
     """
     if current_user.role != RoleEnum.ADMIN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
-        )
+        raise ForbiddenError("Admin access required")
     return current_user
+
 
 async def verify_business_ownership(
     business_id: UUID, current_user: UserDB, conn: AsyncConnection
@@ -180,7 +176,6 @@ async def verify_business_ownership(
         NotFoundError: If business not found
         HTTPException: 403 if user doesn't own the business
     """
-    
 
     business_repo = BusinessRepository(conn)
     business = await business_repo.get_business_by_id(business_id)
@@ -189,11 +184,8 @@ async def verify_business_ownership(
         raise NotFoundError(f"Business {business_id} not found")
 
     if business.owner_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have permission to access this business",
-        )
-    
+        raise ForbiddenError("You don't have permission to access this business")
+
 
 async def verify_service_ownership(
     service_id: UUID, current_user: UserDB, conn: AsyncConnection
@@ -307,10 +299,7 @@ async def verify_booking_ownership(
         await verify_location_ownership(booking.location_id, current_user, conn)
         return
 
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="You don't have permission to access this booking",
-    )
+    raise ForbiddenError("You don't have permission to access this booking")
 
 
 async def verify_order_ownership(
@@ -347,10 +336,7 @@ async def verify_order_ownership(
         await verify_location_ownership(order.location_id, current_user, conn)
         return
 
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="You don't have permission to access this order",
-    )
+    raise ForbiddenError("You don't have permission to access this order")
 
 
 async def verify_employee_ownership(
@@ -370,7 +356,7 @@ async def verify_employee_ownership(
         NotFoundError: If employee not found
         HTTPException: 403 if user doesn't own the employee's location
     """
-    
+
     employee_repo = EmployeeRepository(conn)
     employee = await employee_repo.get_employee_by_id(employee_id)
 
@@ -395,10 +381,7 @@ async def validate_booking_creation(
 
     if current_user.role == RoleEnum.CUSTOMER:
         if booking_data.customer_id != current_user.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Customers can only create bookings for themselves",
-            )
+            raise ForbiddenError("Customers can only create bookings for themselves")
 
     elif current_user.role == RoleEnum.PROVIDER:
         await verify_location_ownership(booking_data.location_id, current_user, conn)
@@ -408,11 +391,8 @@ async def validate_booking_creation(
         pass
 
     else:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Invalid role for booking creation",
-        )
-    
+        raise ForbiddenError("Invalid role for booking creation")
+
 
 async def validate_order_creation(
     order_data: "OrderCreate", current_user: UserDB, conn: AsyncConnection
@@ -427,10 +407,7 @@ async def validate_order_creation(
     """
     if current_user.role == RoleEnum.CUSTOMER:
         if order_data.customer_id != current_user.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Customers can only create orders for themselves",
-            )
+            raise ForbiddenError("Customers can only create orders for themselves")
 
     elif current_user.role == RoleEnum.PROVIDER:
         await verify_location_ownership(order_data.location_id, current_user, conn)
@@ -440,11 +417,8 @@ async def validate_order_creation(
         pass
 
     else:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Invalid role for order creation",
-        )
-    
+        raise ForbiddenError("Invalid role for order creation")
+
 
 async def verify_product_ownership(
     product_id: UUID, current_user: UserDB, conn: AsyncConnection
@@ -475,14 +449,8 @@ async def verify_review_creation(
     booking = await booking_repo.get_booking_by_id(booking_id)
 
     if not booking:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Booking {booking_id} not found",
-        )
+        raise NotFoundError(f"Booking {booking_id} not found")
 
     # Only the customer who made the booking can review it
     if booking.customer.id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only review your own bookings",
-        )
+        raise ForbiddenError("You can only review your own bookings")
