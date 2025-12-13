@@ -273,3 +273,57 @@ async def test_employee_id(
         await repo.add_working_hours(hours_data)
 
     return employee.id
+
+
+@pytest.fixture
+async def test_booking_id(
+    db_conn: AsyncConnection,
+    test_user_id: tuple[UUID, str],
+    test_location_id: UUID,
+    test_employee_id: UUID,
+    test_service_variant_id: UUID,
+) -> UUID:
+    """Create a test booking for review tests."""
+    from datetime import datetime, timedelta, timezone
+
+    from app.models.booking import BookingCreate
+    from app.repositories.booking_repository import BookingRepository
+
+    user_id, _ = test_user_id
+    repo = BookingRepository(db_conn)
+
+    # Create booking for tomorrow
+    start_time = datetime.now(timezone.utc) + timedelta(days=1)
+    end_time = start_time + timedelta(hours=1)
+
+    booking_data = BookingCreate(
+        customer_id=user_id,
+        location_id=test_location_id,
+        employee_id=test_employee_id,
+        service_variant_id=test_service_variant_id,
+        start_time=start_time,
+        end_time=end_time,
+        total_price=Decimal("100.00"),
+        customer_note="Test booking for reviews",
+    )
+
+    booking = await repo.create_booking(booking_data.model_dump())
+    return booking.id
+
+
+@pytest.fixture
+async def test_product_id(db_conn: AsyncConnection, test_location_id: UUID) -> UUID:
+    """Create a test product."""
+    from app.models.product import ProductCreate
+    from app.repositories.product_repository import ProductRepository
+
+    repo = ProductRepository(db_conn)
+    product_data = ProductCreate(
+        location_id=test_location_id,
+        name="Test Product",
+        sku="TEST-SKU",
+        price=Decimal("99.99"),
+        stock_quantity=10,
+    )
+    product = await repo.create_product(product_data.model_dump())
+    return product.id

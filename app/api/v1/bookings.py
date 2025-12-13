@@ -88,6 +88,23 @@ async def get_user_bookings(
     booking_repo = BookingRepository(conn)
     return await booking_repo.get_user_bookings(current_user.id, status, limit, offset)
 
+@router.get("/slots", response_model=list[dict])
+async def get_booking_slots(
+    booking_service: Annotated[BookingService, Depends(get_booking_service)],
+    date: datetime = Query(..., description="Date to check"),
+    service_variant_id: UUID = Query(..., description="Service Variant ID"),
+    location_id: UUID = Query(..., description="Location ID"),
+    employee_id: Optional[UUID] = Query(None, description="Optional specific employee"),
+):
+    """
+    Get available time slots for booking.
+
+    Returns list of slots with start_time and list of available_employee_ids.
+    """
+    return await booking_service.get_available_slots_for_booking(
+        date, service_variant_id, location_id, employee_id
+    )
+
 
 @router.get("/{booking_id}", response_model=BookingDetail)
 async def get_booking(
@@ -154,23 +171,6 @@ async def delete_booking(
     booking_repo = BookingRepository(conn)
     await booking_repo.delete_booking(booking_id) 
 
-
-@router.get("/slots", response_model=list[dict])
-async def get_booking_slots(
-    booking_service: Annotated[BookingService, Depends(get_booking_service)],
-    date: datetime = Query(..., description="Date to check"),
-    service_variant_id: UUID = Query(..., description="Service Variant ID"),
-    location_id: UUID = Query(..., description="Location ID"),
-    employee_id: Optional[UUID] = Query(None, description="Optional specific employee"),
-):
-    """
-    Get available time slots for booking.
-
-    Returns list of slots with start_time and list of available_employee_ids.
-    """
-    return await booking_service.get_available_slots_for_booking(
-        date, service_variant_id, location_id, employee_id
-    )
 
 
 @router.get("/locations/{location_id}", response_model=list[BookingResponse])

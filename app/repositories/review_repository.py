@@ -22,16 +22,17 @@ class ReviewRepository(BaseRepository[ReviewResponse]):
         Note: booking_id has UNIQUE constraint, so one review per booking.
         """
         query = """
+            WITH inserted_review AS (
+                INSERT INTO reviews (booking_id, rating, comment)
+                VALUES (%s, %s, %s)
+                RETURNING id, booking_id, rating, comment, created_at
+            )
             SELECT 
                 r.id, r.booking_id, r.rating, r.comment, r.created_at,
                 u.id as user_id,
                 u.first_name || ' ' || u.last_name as user_name,
                 u.email as user_email
-            FROM (
-                INSERT INTO reviews (booking_id, rating, comment)
-                VALUES (%s, %s, %s)
-                RETURNING id, booking_id, rating, comment, created_at
-            ) r
+            FROM inserted_review r
             JOIN bookings b ON r.booking_id = b.id
             JOIN users u ON b.customer_id = u.id
         """
@@ -72,17 +73,18 @@ class ReviewRepository(BaseRepository[ReviewResponse]):
     async def add_favorite(self, user_id: UUID, location_id: UUID) -> FavoriteResponse:
         """Add location to user's favorites."""
         query = """
+            WITH inserted_favorite AS (
+                INSERT INTO favorites (user_id, location_id)
+                VALUES (%s, %s)
+                ON CONFLICT (user_id, location_id) DO UPDATE SET user_id = EXCLUDED.user_id
+                RETURNING user_id, location_id, created_at
+            )
             SELECT 
                 f.user_id, f.location_id, f.created_at,
                 l.name as location_name,
                 l.business_id,
                 b.name as business_name
-            FROM (
-                INSERT INTO favorites (user_id, location_id)
-                VALUES (%s, %s)
-                ON CONFLICT (user_id, location_id) DO UPDATE SET user_id = EXCLUDED.user_id
-                RETURNING user_id, location_id, created_at
-            ) f
+            FROM inserted_favorite f
             JOIN locations l ON f.location_id = l.id
             JOIN businesses b ON l.business_id = b.id
         """

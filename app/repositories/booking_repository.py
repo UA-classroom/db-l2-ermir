@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from psycopg import AsyncConnection
+from psycopg import AsyncConnection, sql
 
 from app.core.exceptions import NotFoundError
 from app.models.booking import BookingDetail, BookingResponse
@@ -18,7 +18,6 @@ class BookingRepository(BaseRepository[BookingResponse]):
 
     async def create_booking(self, data: dict) -> BookingResponse:
         """Insert booking with default status and return with status name."""
-        from psycopg import sql
 
         # Set default status if not provided
         if "status_id" not in data:
@@ -130,7 +129,27 @@ class BookingRepository(BaseRepository[BookingResponse]):
         self, booking_id: UUID, data: dict
     ) -> Optional[BookingResponse]:
         """Reschedule."""
-        return await self._update(self.table, booking_id, data, BookingResponse)
+
+        set_parts = [
+            sql.SQL("{} = %s").format(sql.Identifier(key)) for key in data.keys()
+        ]
+        set_clause = sql.SQL(", ").join(set_parts)
+
+        query = sql.Composed(
+            [
+                sql.SQL("UPDATE bookings SET "),
+                set_clause,
+                sql.SQL(""" WHERE id = %s RETURNING 
+                id, customer_id, location_id, employee_id, service_variant_id,
+                start_time, end_time, total_price, customer_note, created_at,
+                (SELECT name FROM booking_statuses WHERE id = bookings.status_id) as status
+            """),
+            ]
+        )
+
+        return await self._execute_one(
+            query, (*data.values(), booking_id), BookingResponse
+        )
 
     async def update_booking_status(
         self, booking_id: UUID, status: str

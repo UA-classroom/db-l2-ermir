@@ -1,9 +1,16 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    AwareDatetime,
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 from app.core.enums import BookingStatusEnum
 from app.models.employee import EmployeeResponse
@@ -18,8 +25,8 @@ class BookingBase(BaseModel):
     location_id: UUID
     employee_id: UUID
     service_variant_id: UUID
-    start_time: datetime
-    end_time: datetime
+    start_time: AwareDatetime
+    end_time: AwareDatetime
     total_price: Optional[Decimal] = Field(None, gt=0, decimal_places=2)
     customer_note: Optional[str] = None
 
@@ -29,8 +36,8 @@ class BookingCreate(BookingBase):
 
     @field_validator("start_time")
     @classmethod
-    def validate_future_time(cls, v: datetime) -> datetime:
-        if v < datetime.now():
+    def validate_future_time(cls, v: AwareDatetime) -> AwareDatetime:
+        if v < datetime.now(timezone.utc):
             raise ValueError("Cannot book in the past")
         return v
 
@@ -44,14 +51,16 @@ class BookingCreate(BookingBase):
 class BookingUpdate(BaseModel):
     """Booking update request (reschedule)."""
 
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
+    start_time: Optional[AwareDatetime] = None
+    end_time: Optional[AwareDatetime] = None
     customer_note: Optional[str] = None
 
     @field_validator("start_time")
     @classmethod
-    def validate_future_time(cls, v: Optional[datetime]) -> Optional[datetime]:
-        if v is not None and v < datetime.now():
+    def validate_future_time(
+        cls, v: Optional[AwareDatetime]
+    ) -> Optional[AwareDatetime]:
+        if v is not None and v < datetime.now(timezone.utc):
             raise ValueError("Cannot book in the past")
         return v
 
@@ -72,11 +81,13 @@ class BookingResponse(BaseModel):
     employee_id: UUID
     service_variant_id: UUID
     status: BookingStatusEnum
-    start_time: datetime
-    end_time: datetime
+    start_time: AwareDatetime
+    end_time: AwareDatetime
     total_price: Decimal
     customer_note: Optional[str] = None
-    created_at: datetime
+    created_at: AwareDatetime
+
+    model_config = ConfigDict(from_attributes=True)
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -90,11 +101,11 @@ class BookingDetail(BaseModel):
     employee: EmployeeResponse
     service: ServiceVariantResponse
     status: BookingStatusEnum
-    start_time: datetime
-    end_time: datetime
+    start_time: AwareDatetime
+    end_time: AwareDatetime
     total_price: Decimal
     customer_note: Optional[str] = None
-    created_at: datetime
+    created_at: AwareDatetime
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -109,8 +120,8 @@ class AvailabilityRequest(BaseModel):
     """Availability check request."""
 
     employee_id: UUID
-    start_time: datetime
-    end_time: datetime
+    start_time: AwareDatetime
+    end_time: AwareDatetime
 
 # TODO: Delete it after tested works
 #class AvailabilityResponse(BaseModel):
