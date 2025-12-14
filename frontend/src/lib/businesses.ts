@@ -44,6 +44,18 @@ export async function getLocationImages(locationId: string) {
     return response.data;
 }
 
+// Get single location details
+export async function getLocation(locationId: string): Promise<LocationSearchResult> {
+    const response = await api.get(`/businesses/locations/${locationId}`);
+    return response.data;
+}
+
+// Get location services (via business)
+export async function getLocationServices(businessId: string) {
+    const response = await api.get(`/businesses/${businessId}/services`);
+    return response.data;
+}
+
 // Get categories
 export async function getCategories(): Promise<Category[]> {
     const response = await api.get('/services/categories');

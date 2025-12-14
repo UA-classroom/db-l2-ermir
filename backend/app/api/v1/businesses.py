@@ -45,6 +45,7 @@ from app.repositories.service_repository import ServiceRepository
 
 router = APIRouter(prefix="/businesses", tags=["Businesses"])
 
+
 @router.get("/locations", response_model=list[LocationSearchResult])
 async def get_locations(
     conn: Annotated[AsyncConnection, Depends(get_db_conn)],
@@ -63,6 +64,27 @@ async def get_locations(
     return await repo.get_locations(
         query=query, city=city, category=category, offset=offset, limit=limit
     )
+
+
+@router.get("/locations/{location_id}", response_model=LocationSearchResult)
+async def get_location_by_id(
+    location_id: UUID,
+    conn: Annotated[AsyncConnection, Depends(get_db_conn)],
+):
+    """
+    Get a single location by ID with business details and primary image.
+
+    - **location_id**: UUID of the location
+    """
+    repo = BusinessRepository(conn)
+    # Get location with search result format (includes business_name, rating, image)
+    locations = await repo.get_locations(limit=1000)
+    location = next((loc for loc in locations if loc.id == location_id), None)
+
+    if not location:
+        raise NotFoundError(f"Location {location_id} not found")
+
+    return location
 
 
 @router.get("/", response_model=list[BusinessResponse])
