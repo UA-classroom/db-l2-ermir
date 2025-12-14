@@ -1,4 +1,5 @@
 """Reset database and run seed scripts."""
+
 import argparse
 import asyncio
 import platform
@@ -20,8 +21,7 @@ from scripts.seeds.core.employees import seed_employees
 from scripts.seeds.core.bookings import seed_bookings
 from scripts.seeds.core.coupons import seed_coupons
 from scripts.seeds.core.orders import seed_orders
-
-
+from scripts.seeds.core.images import seed_location_images
 
 
 async def reset_schema(conn):
@@ -49,7 +49,7 @@ async def reset_schema(conn):
     await conn.commit()
 
     # Run schema.sql
-    with open(schema_path, 'r', encoding='utf-8') as f:
+    with open(schema_path, "r", encoding="utf-8") as f:
         schema_sql = f.read()
 
     async with conn.cursor() as cur:
@@ -73,6 +73,7 @@ async def run_seeds(conn, only=None):
         ("bookings", seed_bookings),
         ("coupons", seed_coupons),
         ("orders", seed_orders),
+        ("images", seed_location_images),
     ]
 
     # Filter if --only specified
@@ -94,7 +95,9 @@ async def run_seeds(conn, only=None):
 
 async def main():
     parser = argparse.ArgumentParser(description="Reset database and run seeds")
-    parser.add_argument("--only", help="Run only specific seed (e.g., 'roles', 'users')")
+    parser.add_argument(
+        "--only", help="Run only specific seed (e.g., 'roles', 'users')"
+    )
     parser.add_argument("--no-reset", action="store_true", help="Skip schema reset")
     args = parser.parse_args()
 
