@@ -19,7 +19,9 @@ from decimal import Decimal
 from typing import Optional
 from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field
+
+from app.models.base import BaseModel
 
 
 class BusinessBase(BaseModel):
@@ -138,3 +140,4 @@ class LocationSearchResult(LocationResponse):
     primary_category: Optional[str] = None
     average_rating: float = 0.0
     review_count: int = 0
+    primary_image: Optional[str] = None  # URL of primary image from location_images

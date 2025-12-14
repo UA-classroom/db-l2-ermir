@@ -18,6 +18,7 @@ Rating Calculation:
     This maintains database normalization by not storing redundant data,
     while still providing aggregated rating information in responses.
 """
+
 from typing import Optional
 from uuid import UUID
 
@@ -47,7 +48,6 @@ class BusinessRepository(BaseRepository[BusinessResponse]):
         super().__init__(conn)
         self.table = "businesses"
         self.enable_soft_delete = True
-
 
     async def get_businesses(
         self,
@@ -120,19 +120,18 @@ class BusinessRepository(BaseRepository[BusinessResponse]):
         params.extend([limit, offset])
 
         return await self._execute_many(query, tuple(params), BusinessResponse)
-    
 
     async def get_business_by_id(self, business_id: UUID) -> Optional[BusinessResponse]:
-            """
-            Get a single business by ID with ratings and category.
+        """
+        Get a single business by ID with ratings and category.
 
-            Args:
-                business_id: Business UUID
+        Args:
+            business_id: Business UUID
 
-            Returns:
-                Business with ratings and category, or None if not found
-            """
-            query = """
+        Returns:
+            Business with ratings and category, or None if not found
+        """
+        query = """
                 SELECT 
                     b.*,
                     COALESCE(AVG(r.rating), 0) as average_rating,
@@ -151,8 +150,7 @@ class BusinessRepository(BaseRepository[BusinessResponse]):
                 WHERE b.id = %s AND b.deleted_at IS NULL
                 GROUP BY b.id
             """
-            return await self._execute_one(query, (business_id,), BusinessResponse)
-
+        return await self._execute_one(query, (business_id,), BusinessResponse)
 
     async def get_business_locations(self, business_id: UUID) -> list[LocationResponse]:
         """
@@ -197,7 +195,6 @@ class BusinessRepository(BaseRepository[BusinessResponse]):
         """
         query = "SELECT * FROM location_contacts WHERE location_id = %s ORDER BY contact_type"
         return await self._execute_many(query, (location_id,), ContactResponse)
-    
 
     async def get_location_by_id(self, location_id: UUID) -> Optional[LocationResponse]:
         """
@@ -211,7 +208,6 @@ class BusinessRepository(BaseRepository[BusinessResponse]):
         """
         query = "SELECT * FROM locations WHERE id = %s AND deleted_at IS NULL"
         return await self._execute_one(query, (location_id,), LocationResponse)
-    
 
     async def get_contact_by_id(self, contact_id: int) -> Optional[ContactResponse]:
         """
@@ -225,7 +221,7 @@ class BusinessRepository(BaseRepository[BusinessResponse]):
         """
         query = "SELECT * FROM location_contacts WHERE id = %s"
         return await self._execute_one(query, (contact_id,), ContactResponse)
-    
+
     async def create_business(self, business_data: BusinessCreate) -> BusinessResponse:
         """
         Create a new business.
@@ -251,8 +247,6 @@ class BusinessRepository(BaseRepository[BusinessResponse]):
             # PostgreSQL unique constraint violation
             error_msg = str(e).lower()
             if "unique constraint" in error_msg or "duplicate key" in error_msg:
-                
-
                 if "slug" in error_msg:
                     raise ConflictError(
                         f"Business with slug '{business_data.slug}' already exists"
@@ -294,7 +288,6 @@ class BusinessRepository(BaseRepository[BusinessResponse]):
             return await self.get_business_by_id(business_id)
 
         return await self._update("businesses", business_id, data, BusinessResponse)
-    
 
     async def get_locations(
         self,
@@ -317,7 +310,7 @@ class BusinessRepository(BaseRepository[BusinessResponse]):
         Returns:
             List of locations with business details
         """
-        #TODO: legacy code - using b.created_at...Need created_at column at location table
+        # TODO: legacy code - using b.created_at...Need created_at column at location table
 
         sql_query = """
             SELECT 
@@ -332,7 +325,14 @@ class BusinessRepository(BaseRepository[BusinessResponse]):
                     LEFT JOIN categories c ON s.category_id = c.id 
                     WHERE s.business_id = b.id 
                     LIMIT 1
-                ) as primary_category
+                ) as primary_category,
+                (
+                    SELECT li.url 
+                    FROM location_images li 
+                    WHERE li.location_id = l.id 
+                    ORDER BY li.is_primary DESC, li.display_order ASC 
+                    LIMIT 1
+                ) as primary_image
             FROM locations l
             JOIN businesses b ON l.business_id = b.id
             LEFT JOIN bookings bk ON l.id = bk.location_id AND bk.deleted_at IS NULL
@@ -368,7 +368,6 @@ class BusinessRepository(BaseRepository[BusinessResponse]):
         params.extend([limit, offset])
 
         return await self._execute_many(sql_query, tuple(params), LocationSearchResult)
-    
 
     async def create_location(self, location_data: LocationCreate) -> LocationResponse:
         """
@@ -425,7 +424,6 @@ class BusinessRepository(BaseRepository[BusinessResponse]):
             return await self._execute_one(query, (location_id,), LocationResponse)
 
         return await self._update("locations", location_id, data, LocationResponse)
-    
 
     async def create_contact(self, contact_data: ContactCreate) -> ContactResponse:
         """
@@ -471,17 +469,15 @@ class BusinessRepository(BaseRepository[BusinessResponse]):
 
         # location_contacts doesn't have soft delete, use direct UPDATE with sql.SQL
         set_parts = [
-            sql.SQL("{} = %s").format(sql.Identifier(key))
-            for key in data.keys()
+            sql.SQL("{} = %s").format(sql.Identifier(key)) for key in data.keys()
         ]
         set_clause = sql.SQL(", ").join(set_parts)
-        query = sql.SQL("UPDATE location_contacts SET {set_clause} WHERE id = %s RETURNING *").format(
-            set_clause=set_clause
-        )
+        query = sql.SQL(
+            "UPDATE location_contacts SET {set_clause} WHERE id = %s RETURNING *"
+        ).format(set_clause=set_clause)
         return await self._execute_one(
             query, (*data.values(), contact_id), ContactResponse
         )
-    
 
     async def delete_contact(self, contact_id: int) -> bool:
         """
