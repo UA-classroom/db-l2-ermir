@@ -47,14 +47,17 @@ export interface Service {
     name: string;
     description?: string;
     isActive: boolean;
+    variants?: ServiceVariant[];
 }
 
 export interface ServiceVariant {
     id: string;
-    serviceId: string;
+    serviceId?: string;
+    service_id?: string; // Backend snake_case
     name: string;
     price: number;
-    durationMinutes: number;
+    durationMinutes?: number;
+    duration_minutes?: number; // Backend snake_case
 }
 
 export interface Category {

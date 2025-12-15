@@ -2,27 +2,86 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { getLocations } from '@/lib/businesses';
-import { LocationSearchResult } from '@/lib/types/business';
+import { getLocations, getCategories } from '@/lib/businesses';
+import { LocationSearchResult, Category } from '@/lib/types/business';
+import { getFavorites, addFavorite, removeFavorite, FavoriteResponse } from '@/lib/favorites';
+import { useAuthStore } from '@/lib/store';
+import { Navbar } from '@/components/common';
+import { MapPin, Star, Heart } from 'lucide-react';
 
 export default function BrowsePage() {
+    const { isAuthenticated } = useAuthStore();
     const [locations, setLocations] = useState<LocationSearchResult[]>([]);
+    const [favorites, setFavorites] = useState<FavoriteResponse[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCity, setSelectedCity] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('');
+    const [activeTab, setActiveTab] = useState<'all' | 'favorites'>('all');
 
     useEffect(() => {
         loadLocations();
-    }, []);
+        loadCategories();
+        if (isAuthenticated) {
+            loadFavorites();
+        }
+    }, [isAuthenticated]);
 
-    const loadLocations = async (query?: string, city?: string) => {
+    const loadCategories = async () => {
+        try {
+            const data = await getCategories();
+            setCategories(data);
+        } catch (err) {
+            console.error('Error loading categories:', err);
+        }
+    };
+
+    const loadFavorites = async () => {
+        if (!isAuthenticated) return;
+        try {
+            const data = await getFavorites();
+            setFavorites(data);
+        } catch (err) {
+            console.error('Error loading favorites:', err);
+        }
+    };
+
+    // Check if location is in favorites
+    const isFavorite = (locationId: string) => {
+        return favorites.some(f => f.locationId === locationId || (f as any).location_id === locationId);
+    };
+
+    // Toggle favorite status
+    const handleToggleFavorite = async (e: React.MouseEvent, locationId: string) => {
+        e.preventDefault(); // Prevent navigation
+        e.stopPropagation();
+        if (!isAuthenticated) return;
+
+        try {
+            if (isFavorite(locationId)) {
+                await removeFavorite(locationId);
+                setFavorites(prev => prev.filter(f =>
+                    f.locationId !== locationId && (f as any).location_id !== locationId
+                ));
+            } else {
+                const newFav = await addFavorite(locationId);
+                setFavorites(prev => [...prev, newFav]);
+            }
+        } catch (err) {
+            console.error('Error toggling favorite:', err);
+        }
+    };
+
+    const loadLocations = async (query?: string, city?: string, category?: string) => {
         setIsLoading(true);
         setError(null);
         try {
             const data = await getLocations({
                 query: query || undefined,
                 city: city || undefined,
+                category: category || undefined,
                 limit: 50,
             });
             setLocations(data);
@@ -36,40 +95,21 @@ export default function BrowsePage() {
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
-        loadLocations(searchQuery, selectedCity);
+        loadLocations(searchQuery, selectedCity, selectedCategory);
     };
 
     // Get unique cities from locations for filter
     const cities = [...new Set(locations.map((l) => l.city))].filter(Boolean);
 
+    // Filter locations based on active tab
+    const displayedLocations = activeTab === 'favorites'
+        ? locations.filter(loc => isFavorite(loc.id))
+        : locations;
+
     return (
         <div className="min-h-screen bg-[#0f0f1a]">
             {/* Navigation */}
-            <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0f0f1a]/80 backdrop-blur-lg border-b border-white/10">
-                <div className="max-w-7xl mx-auto px-6 lg:px-8">
-                    <div className="flex justify-between h-20 items-center">
-                        <Link href="/" className="flex items-center gap-2">
-                            <span className="text-2xl font-light tracking-wider text-white">
-                                Comfort<span className="font-semibold text-[#d4af37]">Booking</span>
-                            </span>
-                        </Link>
-                        <div className="hidden md:flex items-center gap-8">
-                            <Link
-                                href="/browse"
-                                className="text-[#d4af37] font-light tracking-wide"
-                            >
-                                Discover
-                            </Link>
-                            <Link
-                                href="/login"
-                                className="text-gray-400 hover:text-white font-light tracking-wide transition-colors"
-                            >
-                                Sign In
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-            </nav>
+            <Navbar />
 
             {/* Hero Section */}
             <section className="pt-32 pb-12 bg-gradient-to-br from-[#0f0f1a] via-[#1a1a2e] to-[#16213e]">
@@ -107,6 +147,18 @@ export default function BrowsePage() {
                                     </option>
                                 ))}
                             </select>
+                            <select
+                                value={selectedCategory}
+                                onChange={(e) => setSelectedCategory(e.target.value)}
+                                className="px-6 py-4 bg-[#1a1a2e]/80 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#d4af37]/50"
+                            >
+                                <option value="">All Categories</option>
+                                {categories.map((cat) => (
+                                    <option key={cat.id} value={cat.slug}>
+                                        {cat.name}
+                                    </option>
+                                ))}
+                            </select>
                             <button
                                 type="submit"
                                 className="px-8 py-4 bg-gradient-to-r from-[#d4af37] to-[#b8960f] text-[#0f0f1a] font-medium rounded-lg hover:shadow-[0_0_20px_rgba(212,175,55,0.3)] transition-all"
@@ -120,12 +172,37 @@ export default function BrowsePage() {
 
             {/* Results Section */}
             <section className="py-12 px-6 lg:px-8 max-w-7xl mx-auto">
+                {/* Tabs */}
+                <div className="flex gap-4 mb-8">
+                    <button
+                        onClick={() => setActiveTab('all')}
+                        className={`px-6 py-2 rounded-lg font-medium transition-all ${activeTab === 'all'
+                            ? 'bg-[#d4af37] text-[#0f0f1a]'
+                            : 'bg-[#1a1a2e] text-gray-400 hover:text-white'
+                            }`}
+                    >
+                        All Locations
+                    </button>
+                    {isAuthenticated && (
+                        <button
+                            onClick={() => setActiveTab('favorites')}
+                            className={`px-6 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${activeTab === 'favorites'
+                                ? 'bg-[#d4af37] text-[#0f0f1a]'
+                                : 'bg-[#1a1a2e] text-gray-400 hover:text-white'
+                                }`}
+                        >
+                            <Heart className="w-4 h-4" />
+                            My Favorites
+                        </button>
+                    )}
+                </div>
+
                 {/* Status */}
                 <div className="mb-8">
                     <p className="text-gray-400 font-light">
                         {isLoading
                             ? 'Loading...'
-                            : `${locations.length} locations found`}
+                            : `${displayedLocations.length} locations found`}
                     </p>
                 </div>
 
@@ -160,8 +237,14 @@ export default function BrowsePage() {
                 {/* Location Cards Grid */}
                 {!isLoading && !error && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {locations.map((location) => (
-                            <LocationCard key={location.id} location={location} />
+                        {displayedLocations.map((location) => (
+                            <LocationCard
+                                key={location.id}
+                                location={location}
+                                isFavorite={isFavorite(location.id)}
+                                onToggleFavorite={handleToggleFavorite}
+                                showHeart={isAuthenticated}
+                            />
                         ))}
                     </div>
                 )}
@@ -179,7 +262,14 @@ export default function BrowsePage() {
 }
 
 // Location Card Component
-function LocationCard({ location }: { location: LocationSearchResult }) {
+interface LocationCardProps {
+    location: LocationSearchResult;
+    isFavorite?: boolean;
+    onToggleFavorite?: (e: React.MouseEvent, locationId: string) => void;
+    showHeart?: boolean;
+}
+
+function LocationCard({ location, isFavorite, onToggleFavorite, showHeart }: LocationCardProps) {
     // Use primary image if available, otherwise placeholder based on category
     const imageUrl = location.primaryImage || getPlaceholderImage(location.primaryCategory);
 
@@ -199,6 +289,20 @@ function LocationCard({ location }: { location: LocationSearchResult }) {
                             {location.primaryCategory}
                         </span>
                     )}
+                    {/* Heart Button */}
+                    {showHeart && onToggleFavorite && (
+                        <button
+                            onClick={(e) => onToggleFavorite(e, location.id)}
+                            className="absolute top-3 right-3 p-2 bg-[#0f0f1a]/80 backdrop-blur-sm rounded-full hover:bg-[#0f0f1a] transition-colors"
+                        >
+                            <Heart
+                                className={`w-4 h-4 transition-colors ${isFavorite
+                                        ? 'text-red-500 fill-red-500'
+                                        : 'text-white hover:text-red-400'
+                                    }`}
+                            />
+                        </button>
+                    )}
                 </div>
 
                 {/* Content */}
@@ -214,14 +318,15 @@ function LocationCard({ location }: { location: LocationSearchResult }) {
                     </h3>
 
                     {/* Address */}
-                    <p className="text-gray-500 text-sm font-light mb-3">
-                        📍 {location.address}, {location.city}
+                    <p className="text-gray-500 text-sm font-light mb-3 flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5 text-[#d4af37]" />
+                        {location.address}, {location.city}
                     </p>
 
                     {/* Rating */}
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1">
-                            <span className="text-[#d4af37]">★</span>
+                            <Star className="w-4 h-4 text-[#d4af37] fill-[#d4af37]" />
                             <span className="text-white font-light">
                                 {location.averageRating?.toFixed(1) || '0.0'}
                             </span>

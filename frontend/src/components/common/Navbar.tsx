@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useAuthStore } from '@/lib/store';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { User, Calendar, LogOut, Menu, X } from 'lucide-react';
 
 export function Navbar() {
     const { user, isAuthenticated, logout } = useAuthStore();
@@ -12,115 +13,95 @@ export function Navbar() {
 
     const handleLogout = () => {
         logout();
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
         router.push('/');
+        setIsMobileMenuOpen(false);
     };
 
     return (
-        <nav className="bg-white border-b border-gray-200">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex justify-between h-16 items-center">
+        <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0f0f1a]/80 backdrop-blur-lg border-b border-white/10">
+            <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                <div className="flex justify-between h-20 items-center">
                     {/* Logo */}
                     <Link href="/" className="flex-shrink-0">
-                        <span className="text-2xl font-bold text-blue-600">EasyBooking</span>
+                        <span className="text-2xl font-light tracking-wider text-white">
+                            Comfort<span className="font-semibold text-[#d4af37]">Booking</span>
+                        </span>
                     </Link>
 
                     {/* Desktop Navigation */}
                     <div className="hidden md:flex items-center gap-6">
                         <Link
                             href="/browse"
-                            className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
+                            className="text-gray-400 hover:text-white font-light tracking-wide transition-colors"
                         >
-                            Browse
+                            Discover
                         </Link>
 
                         {isAuthenticated && user ? (
                             <>
                                 {/* Customer Links */}
                                 {user.role === 'customer' && (
-                                    <>
-                                        <Link
-                                            href="/bookings"
-                                            className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
-                                        >
-                                            My Bookings
-                                        </Link>
-                                        <Link
-                                            href="/favorites"
-                                            className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
-                                        >
-                                            Favorites
-                                        </Link>
-                                    </>
+                                    <Link
+                                        href="/dashboard"
+                                        className="text-gray-400 hover:text-white font-light tracking-wide transition-colors"
+                                    >
+                                        Dashboard
+                                    </Link>
                                 )}
 
                                 {/* Provider Links */}
                                 {user.role === 'provider' && (
-                                    <>
-                                        <Link
-                                            href="/provider/dashboard"
-                                            className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
-                                        >
-                                            Dashboard
-                                        </Link>
-                                        <Link
-                                            href="/provider/calendar"
-                                            className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
-                                        >
-                                            Calendar
-                                        </Link>
-                                        <Link
-                                            href="/provider/businesses"
-                                            className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
-                                        >
-                                            Businesses
-                                        </Link>
-                                    </>
-                                )}
-
-                                {/* Admin Links */}
-                                {user.role === 'admin' && (
                                     <Link
-                                        href="/admin"
-                                        className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
+                                        href="/provider/dashboard"
+                                        className="text-gray-400 hover:text-white font-light tracking-wide transition-colors"
                                     >
-                                        Admin
+                                        Dashboard
                                     </Link>
                                 )}
 
+                                <Link
+                                    href="/bookings"
+                                    className="text-gray-400 hover:text-white font-light tracking-wide transition-colors"
+                                >
+                                    My Bookings
+                                </Link>
+
                                 {/* User Menu */}
                                 <div className="relative group">
-                                    <button className="flex items-center gap-2 text-gray-700 hover:text-gray-900">
-                                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                                            <span className="text-blue-600 font-medium text-sm">
-                                                {user.first_name[0]}{user.last_name[0]}
+                                    <button className="flex items-center gap-2 text-gray-400 hover:text-white font-light transition-colors">
+                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#d4af37] to-[#b8960f] flex items-center justify-center">
+                                            <span className="text-[#0f0f1a] text-xs font-medium">
+                                                {user.first_name?.[0]}{user.last_name?.[0]}
                                             </span>
                                         </div>
-                                        <span className="font-medium">{user.first_name}</span>
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                        </svg>
+                                        <span>{user.first_name}</span>
                                     </button>
 
                                     {/* Dropdown */}
-                                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+                                    <div className="absolute right-0 mt-2 w-48 bg-[#1a1a2e] border border-white/10 rounded-lg shadow-xl py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
                                         <Link
                                             href="/profile"
-                                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                            className="flex items-center gap-3 px-4 py-2 text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
                                         >
+                                            <User className="w-4 h-4" />
                                             Profile
                                         </Link>
                                         <Link
-                                            href="/settings"
-                                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                            href="/bookings"
+                                            className="flex items-center gap-3 px-4 py-2 text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
                                         >
-                                            Settings
+                                            <Calendar className="w-4 h-4" />
+                                            My Bookings
                                         </Link>
-                                        <hr className="my-1" />
+                                        <hr className="my-2 border-white/5" />
                                         <button
                                             onClick={handleLogout}
-                                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                                            className="w-full flex items-center gap-3 text-left px-4 py-2 text-red-400 hover:bg-white/5 transition-colors"
                                         >
-                                            Logout
+                                            <LogOut className="w-4 h-4" />
+                                            Sign Out
                                         </button>
                                     </div>
                                 </div>
@@ -129,15 +110,15 @@ export function Navbar() {
                             <>
                                 <Link
                                     href="/login"
-                                    className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
+                                    className="text-gray-400 hover:text-white font-light tracking-wide transition-colors"
                                 >
-                                    Login
+                                    Sign In
                                 </Link>
                                 <Link
                                     href="/register/customer"
-                                    className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                                    className="px-4 py-2 bg-gradient-to-r from-[#d4af37] to-[#b8960f] text-[#0f0f1a] rounded-lg font-medium hover:shadow-[0_0_20px_rgba(212,175,55,0.3)] transition-all"
                                 >
-                                    Sign Up
+                                    Get Started
                                 </Link>
                             </>
                         )}
@@ -146,7 +127,7 @@ export function Navbar() {
                     {/* Mobile Menu Button */}
                     <button
                         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                        className="md:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100"
+                        className="md:hidden p-2 text-white"
                     >
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             {isMobileMenuOpen ? (
@@ -157,60 +138,68 @@ export function Navbar() {
                         </svg>
                     </button>
                 </div>
-
-                {/* Mobile Menu */}
-                {isMobileMenuOpen && (
-                    <div className="md:hidden py-4 border-t border-gray-200">
-                        <div className="flex flex-col gap-2">
-                            <Link href="/browse" className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
-                                Browse
-                            </Link>
-                            {isAuthenticated && user ? (
-                                <>
-                                    {user.role === 'customer' && (
-                                        <>
-                                            <Link href="/bookings" className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
-                                                My Bookings
-                                            </Link>
-                                            <Link href="/favorites" className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
-                                                Favorites
-                                            </Link>
-                                        </>
-                                    )}
-                                    {user.role === 'provider' && (
-                                        <>
-                                            <Link href="/provider/dashboard" className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
-                                                Dashboard
-                                            </Link>
-                                            <Link href="/provider/calendar" className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
-                                                Calendar
-                                            </Link>
-                                        </>
-                                    )}
-                                    <Link href="/profile" className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
-                                        Profile
-                                    </Link>
-                                    <button
-                                        onClick={handleLogout}
-                                        className="px-4 py-2 text-left text-red-600 hover:bg-gray-100 rounded-lg"
-                                    >
-                                        Logout
-                                    </button>
-                                </>
-                            ) : (
-                                <>
-                                    <Link href="/login" className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
-                                        Login
-                                    </Link>
-                                    <Link href="/register/customer" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-center">
-                                        Sign Up
-                                    </Link>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                )}
             </div>
+
+            {/* Mobile Menu */}
+            {isMobileMenuOpen && (
+                <div className="md:hidden bg-[#0f0f1a] border-t border-white/10 py-4 px-6">
+                    <Link
+                        href="/browse"
+                        className="block py-3 text-gray-400 hover:text-white font-light transition-colors"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                        Discover
+                    </Link>
+                    {isAuthenticated && user ? (
+                        <>
+                            <Link
+                                href="/dashboard"
+                                className="block py-3 text-gray-400 hover:text-white font-light transition-colors"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                            >
+                                Dashboard
+                            </Link>
+                            <Link
+                                href="/bookings"
+                                className="block py-3 text-gray-400 hover:text-white font-light transition-colors"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                            >
+                                My Bookings
+                            </Link>
+                            <Link
+                                href="/profile"
+                                className="block py-3 text-gray-400 hover:text-white font-light transition-colors"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                            >
+                                Profile
+                            </Link>
+                            <button
+                                onClick={handleLogout}
+                                className="block py-3 text-red-400 font-light"
+                            >
+                                Sign Out
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <Link
+                                href="/login"
+                                className="block py-3 text-gray-400 hover:text-white font-light transition-colors"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                            >
+                                Sign In
+                            </Link>
+                            <Link
+                                href="/register/customer"
+                                className="block py-3 text-[#d4af37] font-light"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                            >
+                                Get Started
+                            </Link>
+                        </>
+                    )}
+                </div>
+            )}
         </nav>
     );
 }

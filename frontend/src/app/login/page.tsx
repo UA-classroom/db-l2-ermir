@@ -48,7 +48,7 @@ export default function LoginPage() {
                     first_name: user.first_name,
                     last_name: user.last_name,
                     role: user.role,
-                    phone_number: user.phone_number,
+                    phone_number: user.mobile_number,
                     is_active: user.is_active,
                 },
                 tokens.access_token,
@@ -60,7 +60,7 @@ export default function LoginPage() {
             } else if (user.role === 'admin') {
                 router.push('/admin');
             } else {
-                router.push('/');
+                router.push('/dashboard');
             }
         } catch (err: any) {
             console.error('Login error:', err);

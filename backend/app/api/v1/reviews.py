@@ -44,16 +44,16 @@ async def create_review(
     return await review_service.create_review(review_data)
 
 
-@router.get("/businesses/{business_id}/reviews", response_model=list[ReviewResponse])
+@router.get("/businesses/{location_id}/reviews", response_model=list[ReviewResponse])
 async def get_business_reviews(
-    business_id: UUID,
+    location_id: UUID,
     conn: Annotated[AsyncConnection, Depends(get_db_conn)],
     limit: int = Query(100, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
-    """Get all reviews for a business."""
+    """Get all reviews for a location."""
     repo = ReviewRepository(conn)
-    return await repo.get_business_reviews(business_id, limit, offset)
+    return await repo.get_business_reviews(location_id, limit, offset)
 
 
 @router.post(

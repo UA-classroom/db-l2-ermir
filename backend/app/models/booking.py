@@ -73,7 +73,7 @@ class BookingUpdate(BaseModel):
 
 
 class BookingResponse(BaseModel):
-    """Basic booking response."""
+    """Basic booking response with optional joined names."""
 
     id: UUID
     customer_id: UUID
@@ -87,7 +87,11 @@ class BookingResponse(BaseModel):
     customer_note: Optional[str] = None
     created_at: AwareDatetime
 
-    model_config = ConfigDict(from_attributes=True)
+    # Optional joined fields for display
+    service_name: Optional[str] = None
+    location_name: Optional[str] = None
+    business_name: Optional[str] = None
+    employee_name: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -123,9 +127,10 @@ class AvailabilityRequest(BaseModel):
     start_time: AwareDatetime
     end_time: AwareDatetime
 
-# TODO: Delete it after tested works
-#class AvailabilityResponse(BaseModel):
- #   """Availability response."""
 
- #   is_available: bool
- #   reason: Optional[str] = Field(None, description="Reason if not available")
+# TODO: Delete it after tested works
+# class AvailabilityResponse(BaseModel):
+#   """Availability response."""
+
+#   is_available: bool
+#   reason: Optional[str] = Field(None, description="Reason if not available")

@@ -45,7 +45,6 @@ class BookingRepository(BaseRepository[BookingResponse]):
         if result is None:
             raise NotFoundError("Failed to create booking")
         return result
-        
 
     async def get_booking_by_id(self, booking_id: UUID) -> Optional[BookingDetail]:
         """Single booking with joins."""
@@ -85,26 +84,34 @@ class BookingRepository(BaseRepository[BookingResponse]):
         limit: int = 100,
         offset: int = 0,
     ) -> list[BookingResponse]:
-        """User's bookings with filters."""
+        """User's bookings with filters and joined names."""
+        base_query = """
+            SELECT 
+                b.id, b.customer_id, b.location_id, b.employee_id, b.service_variant_id,
+                b.start_time, b.end_time, b.total_price, b.customer_note, b.created_at,
+                bs.name as status,
+                sv.name as service_name,
+                l.name as location_name,
+                biz.name as business_name,
+                CONCAT(u.first_name, ' ', u.last_name) as employee_name
+            FROM bookings b
+            JOIN booking_statuses bs ON b.status_id = bs.id
+            LEFT JOIN service_variants sv ON b.service_variant_id = sv.id
+            LEFT JOIN locations l ON b.location_id = l.id
+            LEFT JOIN businesses biz ON l.business_id = biz.id
+            LEFT JOIN employees e ON b.employee_id = e.id
+            LEFT JOIN users u ON e.user_id = u.id
+            WHERE b.customer_id = %s
+        """
+
         if status:
-            query = """
-                SELECT b.*, bs.name as status
-                FROM bookings b
-                JOIN booking_statuses bs ON b.status_id = bs.id
-                WHERE b.customer_id = %s AND bs.name = %s
-                ORDER BY b.start_time DESC
-                LIMIT %s OFFSET %s
-            """
+            query = (
+                base_query
+                + " AND bs.name = %s ORDER BY b.start_time DESC LIMIT %s OFFSET %s"
+            )
             params = (user_id, status, limit, offset)
         else:
-            query = """
-                SELECT b.*, bs.name as status
-                FROM bookings b
-                JOIN booking_statuses bs ON b.status_id = bs.id
-                WHERE b.customer_id = %s
-                ORDER BY b.start_time DESC
-                LIMIT %s OFFSET %s
-            """
+            query = base_query + " ORDER BY b.start_time DESC LIMIT %s OFFSET %s"
             params = (user_id, limit, offset)
 
         return await self._execute_many(query, params, BookingResponse)

@@ -1,6 +1,7 @@
 from datetime import datetime, time, timedelta
 from typing import Optional
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from app.models.employee import (
     AvailabilityResponse,
@@ -9,6 +10,9 @@ from app.models.employee import (
 )
 from app.repositories.booking_repository import BookingRepository
 from app.repositories.employee_repository import EmployeeRepository
+
+# Business timezone - all working hours are interpreted in this timezone
+BUSINESS_TZ = ZoneInfo("Europe/Stockholm")
 
 
 class ScheduleService:
@@ -55,40 +59,52 @@ class ScheduleService:
         if not working_hours:
             return AvailabilityResponse(
                 is_available=False,
-                reason=f"Employee not working on this day (day {day_of_week})"
+                reason=f"Employee not working on this day (day {day_of_week})",
             )
 
         # Step 2: Check if the booking time falls within working hours
-        booking_start_time = start_time.time()
-        booking_end_time = end_time.time()
+        # Convert incoming times to business timezone (working hours are in local time)
+        if start_time.tzinfo:
+            local_start = start_time.astimezone(BUSINESS_TZ)
+            local_end = end_time.astimezone(BUSINESS_TZ)
+        else:
+            # Assume naive datetime is already in business timezone
+            local_start = start_time.replace(tzinfo=BUSINESS_TZ)
+            local_end = end_time.replace(tzinfo=BUSINESS_TZ)
+
+        booking_start_time = local_start.time()
+        booking_end_time = local_end.time()
 
         is_within_working_hours = False
         for shift in working_hours:
             # Handle time comparisons
-            if shift.start_time <= booking_start_time and booking_end_time <= shift.end_time:
+            if (
+                shift.start_time <= booking_start_time
+                and booking_end_time <= shift.end_time
+            ):
                 is_within_working_hours = True
                 break
 
         if not is_within_working_hours:
             return AvailabilityResponse(
                 is_available=False,
-                reason=f"Requested time outside working hours. Working hours: {', '.join([f'{wh.start_time}-{wh.end_time}' for wh in working_hours])}"
+                reason=f"Requested time outside working hours. Working hours: {', '.join([f'{wh.start_time}-{wh.end_time}' for wh in working_hours])}",
             )
 
         # Step 3: Check for internal events (vacation, sick, meetings)
         internal_events = await self.employee_repo.get_employee_internal_events(
-            employee_id,
-            start_date=start_time,
-            end_date=end_time
+            employee_id, start_date=start_time, end_date=end_time
         )
 
         if internal_events:
             # Check if any event overlaps with the requested time
             for event in internal_events:
-                if self._times_overlap(start_time, end_time, event.start_time, event.end_time):
+                if self._times_overlap(
+                    start_time, end_time, event.start_time, event.end_time
+                ):
                     return AvailabilityResponse(
                         is_available=False,
-                        reason=f"Employee has internal event: {event.type} ({event.start_time} - {event.end_time})"
+                        reason=f"Employee has internal event: {event.type} ({event.start_time} - {event.end_time})",
                     )
 
         # All checks passed - employee is available
@@ -98,7 +114,7 @@ class ScheduleService:
         self,
         employee_id: UUID,
         start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None
+        end_date: Optional[datetime] = None,
     ) -> dict:
         """
         Get complete employee schedule including working hours and internal events.
@@ -126,7 +142,7 @@ class ScheduleService:
         self,
         working_hours: list[WorkingHoursResponse],
         day_of_week: int,
-        check_time: time
+        check_time: time,
     ) -> bool:
         """
         Check if employee is working at a specific day and time.
@@ -149,7 +165,7 @@ class ScheduleService:
         self,
         internal_events: list[InternalEventResponse],
         start_time: datetime,
-        end_time: datetime
+        end_time: datetime,
     ) -> Optional[InternalEventResponse]:
         """
         Check if there's an internal event that overlaps with the given time range.
@@ -163,16 +179,15 @@ class ScheduleService:
             Conflicting internal event or None if no conflict
         """
         for event in internal_events:
-            if self._times_overlap(start_time, end_time, event.start_time, event.end_time):
+            if self._times_overlap(
+                start_time, end_time, event.start_time, event.end_time
+            ):
                 return event
         return None
 
     @staticmethod
     def _times_overlap(
-        start1: datetime,
-        end1: datetime,
-        start2: datetime,
-        end2: datetime
+        start1: datetime, end1: datetime, start2: datetime, end2: datetime
     ) -> bool:
         """
         Check if two time ranges overlap.
@@ -239,9 +254,13 @@ class ScheduleService:
 
         # For each working shift, generate possible time slots
         for shift in working_hours:
-            # Convert shift times to datetime for this specific date
-            shift_start = datetime.combine(date.date(), shift.start_time)
-            shift_end = datetime.combine(date.date(), shift.end_time)
+            # Convert shift times to timezone-aware datetime for this specific date
+            shift_start = datetime.combine(
+                date.date(), shift.start_time, tzinfo=BUSINESS_TZ
+            )
+            shift_end = datetime.combine(
+                date.date(), shift.end_time, tzinfo=BUSINESS_TZ
+            )
 
             # Generate slots with the specified interval
             current_slot_start = shift_start

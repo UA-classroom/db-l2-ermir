@@ -141,3 +141,16 @@ class LocationSearchResult(LocationResponse):
     average_rating: float = 0.0
     review_count: int = 0
     primary_image: Optional[str] = None  # URL of primary image from location_images
+
+
+class LocationImageResponse(BaseModel):
+    """Location image response."""
+
+    id: UUID
+    location_id: UUID
+    url: str
+    alt_text: Optional[str] = None
+    display_order: int = 0
+    is_primary: bool = False
+
+    model_config = ConfigDict(from_attributes=True)

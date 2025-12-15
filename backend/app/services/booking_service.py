@@ -41,9 +41,7 @@ class BookingService:
         )
 
     async def calculate_booking_price(
-        self,
-        employee_id: UUID,
-        service_variant_id: UUID
+        self, employee_id: UUID, service_variant_id: UUID
     ) -> Decimal:
         """
         Pricing logic.
@@ -53,7 +51,9 @@ class BookingService:
         Step 3: Return final price
         """
         # Step 1: Get base price from service_variant
-        service_variant = await self.service_repo.get_service_variant_by_id(service_variant_id)
+        service_variant = await self.service_repo.get_service_variant_by_id(
+            service_variant_id
+        )
         if not service_variant:
             raise NotFoundError(f"Service variant {service_variant_id} not found")
 
@@ -64,10 +64,10 @@ class BookingService:
 
         for skill in employee_skills:
             # Convert string UUID to UUID for comparison
-            skill_variant_id = UUID(skill.get('service_variant_id'))
+            skill_variant_id = UUID(skill.get("service_variant_id"))
             if skill_variant_id == service_variant_id:
-                if skill.get('custom_price') is not None:
-                    return Decimal(str(skill['custom_price']))
+                if skill.get("custom_price") is not None:
+                    return Decimal(str(skill["custom_price"]))
 
         # Step 3: Return final price
         return base_price
@@ -83,9 +83,7 @@ class BookingService:
         """
         # Step 1: Check availability (throw exception if not available)
         availability = await self.check_availability(
-            booking_data.employee_id,
-            booking_data.start_time,
-            booking_data.end_time
+            booking_data.employee_id, booking_data.start_time, booking_data.end_time
         )
 
         if not availability.is_available:
@@ -93,14 +91,13 @@ class BookingService:
 
         # Step 2: Calculate price
         total_price = await self.calculate_booking_price(
-            booking_data.employee_id,
-            booking_data.service_variant_id
+            booking_data.employee_id, booking_data.service_variant_id
         )
 
         # Step 3: Create booking record
         booking_dict = booking_data.model_dump()
-        booking_dict['total_price'] = total_price
-        booking_dict['status_id'] = 1  # pending status
+        booking_dict["total_price"] = total_price
+        booking_dict["status_id"] = 1  # pending status
 
         created_booking = await self.booking_repo.create_booking(booking_dict)
 
@@ -108,9 +105,7 @@ class BookingService:
         return created_booking
 
     async def reschedule_booking(
-        self,
-        booking_id: UUID,
-        booking_data: BookingUpdate
+        self, booking_id: UUID, booking_data: BookingUpdate
     ) -> BookingResponse:
         """
         Update booking time.
@@ -124,14 +119,14 @@ class BookingService:
             raise NotFoundError(f"Booking {booking_id} not found")
 
         # Determine new times
-        new_start = booking_data.start_time if booking_data.start_time else existing.start_time
+        new_start = (
+            booking_data.start_time if booking_data.start_time else existing.start_time
+        )
         new_end = booking_data.end_time if booking_data.end_time else existing.end_time
 
         # Step 1: Check new time availability
         availability = await self.check_availability(
-            existing.employee.id,
-            new_start,
-            new_end
+            existing.employee.id, new_start, new_end
         )
 
         if not availability.is_available:
@@ -140,13 +135,15 @@ class BookingService:
         # Step 2: Update booking
         update_dict = {}
         if booking_data.start_time:
-            update_dict['start_time'] = booking_data.start_time
+            update_dict["start_time"] = booking_data.start_time
         if booking_data.end_time:
-            update_dict['end_time'] = booking_data.end_time
+            update_dict["end_time"] = booking_data.end_time
         if booking_data.customer_note is not None:
-            update_dict['customer_note'] = booking_data.customer_note
+            update_dict["customer_note"] = booking_data.customer_note
 
-        updated_booking = await self.booking_repo.update_booking(booking_id, update_dict)
+        updated_booking = await self.booking_repo.update_booking(
+            booking_id, update_dict
+        )
         if not updated_booking:
             raise NotFoundError(f"Booking {booking_id} not found")
 
@@ -164,16 +161,17 @@ class BookingService:
         if not booking:
             raise NotFoundError(f"Booking {booking_id} not found")
 
-        if booking.status in ['cancelled', 'completed']:
+        if booking.status in ["cancelled", "completed"]:
             raise ConflictError(f"Cannot cancel booking with status: {booking.status}")
 
         # Step 2: Update status
-        cancelled_booking = await self.booking_repo.update_booking_status(booking_id, 'cancelled')
+        cancelled_booking = await self.booking_repo.update_booking_status(
+            booking_id, "cancelled"
+        )
         if not cancelled_booking:
             raise NotFoundError(f"Booking {booking_id} not found")
 
         return cancelled_booking
-    
 
     async def get_available_slots_for_booking(
         self,

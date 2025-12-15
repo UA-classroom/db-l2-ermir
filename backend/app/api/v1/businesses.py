@@ -34,6 +34,7 @@ from app.models.business import (
     ContactResponse,
     ContactUpdate,
     LocationCreate,
+    LocationImageResponse,
     LocationResponse,
     LocationSearchResult,
     LocationUpdate,
@@ -85,6 +86,22 @@ async def get_location_by_id(
         raise NotFoundError(f"Location {location_id} not found")
 
     return location
+
+
+@router.get(
+    "/locations/{location_id}/images", response_model=list[LocationImageResponse]
+)
+async def get_location_images(
+    location_id: UUID,
+    conn: Annotated[AsyncConnection, Depends(get_db_conn)],
+):
+    """
+    Get all images for a location.
+
+    - **location_id**: UUID of the location
+    """
+    repo = BusinessRepository(conn)
+    return await repo.get_location_images(location_id)
 
 
 @router.get("/", response_model=list[BusinessResponse])

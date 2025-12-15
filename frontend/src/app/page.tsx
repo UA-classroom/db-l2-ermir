@@ -1,40 +1,11 @@
 import Link from 'next/link';
+import { Navbar } from '@/components/common';
 
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-[#0f0f1a]">
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0f0f1a]/80 backdrop-blur-lg border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="flex justify-between h-20 items-center">
-            <Link href="/" className="flex items-center gap-2">
-              <span className="text-2xl font-light tracking-wider text-white">
-                Comfort<span className="font-semibold text-[#d4af37]">Booking</span>
-              </span>
-            </Link>
-            <div className="hidden md:flex items-center gap-8">
-              <Link
-                href="/browse"
-                className="text-gray-400 hover:text-white font-light tracking-wide transition-colors"
-              >
-                Discover
-              </Link>
-              <Link
-                href="/login"
-                className="text-gray-400 hover:text-white font-light tracking-wide transition-colors"
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/register/customer"
-                className="px-6 py-2.5 border border-[#d4af37] text-[#d4af37] font-light tracking-wide rounded hover:bg-[#d4af37] hover:text-[#0f0f1a] transition-all duration-300"
-              >
-                Get Started
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
+      {/* Navigation - using shared component for auth awareness */}
+      <Navbar />
 
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden">

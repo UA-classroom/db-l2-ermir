@@ -52,12 +52,18 @@ export async function getLocation(locationId: string): Promise<LocationSearchRes
 
 // Get location services (via business)
 export async function getLocationServices(businessId: string) {
-    const response = await api.get(`/businesses/${businessId}/services`);
+    const response = await api.get(`/businesses/${businessId}/services?include_variants=true`);
     return response.data;
 }
 
 // Get categories
 export async function getCategories(): Promise<Category[]> {
     const response = await api.get('/services/categories');
+    return response.data;
+}
+
+// Get location contacts
+export async function getLocationContacts(locationId: string) {
+    const response = await api.get(`/businesses/locations/${locationId}/contacts`);
     return response.data;
 }

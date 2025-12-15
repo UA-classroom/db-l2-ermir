@@ -33,6 +33,7 @@ from app.models.business import (
     ContactResponse,
     ContactUpdate,
     LocationCreate,
+    LocationImageResponse,
     LocationResponse,
     LocationSearchResult,
     LocationUpdate,
@@ -196,6 +197,26 @@ class BusinessRepository(BaseRepository[BusinessResponse]):
         query = "SELECT * FROM location_contacts WHERE location_id = %s ORDER BY contact_type"
         return await self._execute_many(query, (location_id,), ContactResponse)
 
+    async def get_location_images(
+        self, location_id: UUID
+    ) -> list[LocationImageResponse]:
+        """
+        Get all images for a location.
+
+        Args:
+            location_id: Location UUID
+
+        Returns:
+            List of location images ordered by primary flag and display order
+        """
+        query = """
+            SELECT id, location_id, url, alt_text, display_order, is_primary
+            FROM location_images
+            WHERE location_id = %s
+            ORDER BY is_primary DESC, display_order ASC
+        """
+        return await self._execute_many(query, (location_id,), LocationImageResponse)
+
     async def get_location_by_id(self, location_id: UUID) -> Optional[LocationResponse]:
         """
         Get a single location by ID.
@@ -356,7 +377,7 @@ class BusinessRepository(BaseRepository[BusinessResponse]):
                 AND EXISTS (
                     SELECT 1 FROM services s
                     JOIN categories c ON s.category_id = c.id
-                    WHERE s.business_id = b.id AND c.name ILIKE %s
+                    WHERE s.business_id = b.id AND c.slug ILIKE %s
                 )
             """
             params.append(f"%{category}%")

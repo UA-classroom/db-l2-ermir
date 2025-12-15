@@ -3,31 +3,27 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { getLocation, getLocationImages, getLocationServices } from '@/lib/businesses';
-import { LocationSearchResult, LocationImage } from '@/lib/types/business';
+import { getLocation, getLocationImages, getLocationServices, getLocationContacts } from '@/lib/businesses';
+import { LocationSearchResult, LocationImage, Service, ServiceVariant } from '@/lib/types/business';
+import { getBusinessReviews, Review } from '@/lib/reviews';
+import { getFavorites, addFavorite, removeFavorite, FavoriteResponse } from '@/lib/favorites';
+import { useAuthStore } from '@/lib/store';
+import { Navbar } from '@/components/common';
+import { MapPin, Star, Heart, Phone, User } from 'lucide-react';
 
-interface Service {
-    id: string;
-    name: string;
-    description?: string;
-    categoryId: number;
-    variants: ServiceVariant[];
-}
 
-interface ServiceVariant {
-    id: string;
-    name: string;
-    price: number;
-    durationMinutes: number;
-}
 
 export default function LocationDetailPage() {
     const params = useParams();
     const locationId = params.id as string;
+    const { isAuthenticated } = useAuthStore();
 
     const [location, setLocation] = useState<LocationSearchResult | null>(null);
     const [images, setImages] = useState<LocationImage[]>([]);
     const [services, setServices] = useState<Service[]>([]);
+    const [reviews, setReviews] = useState<Review[]>([]);
+    const [contacts, setContacts] = useState<{ id: number; contactType: string; phoneNumber: string }[]>([]);
+    const [isFavorite, setIsFavorite] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [activeImage, setActiveImage] = useState(0);
@@ -62,12 +58,53 @@ export default function LocationDetailPage() {
                 } catch {
                     // Services might not be available
                 }
+
+                // Load reviews (for this specific location)
+                try {
+                    const reviewData = await getBusinessReviews(locationId);
+                    setReviews(reviewData);
+                } catch {
+                    // Reviews might not exist
+                }
+            }
+
+            // Load contacts
+            try {
+                const contactData = await getLocationContacts(locationId);
+                setContacts(contactData);
+            } catch {
+                // Contacts might not exist
+            }
+
+            // Check if favorited
+            if (isAuthenticated) {
+                try {
+                    const favorites = await getFavorites();
+                    setIsFavorite(favorites.some(f => f.locationId === locationId));
+                } catch {
+                    // Favorites might fail
+                }
             }
         } catch (err: any) {
             console.error('Error loading location:', err);
             setError('Location not found');
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleToggleFavorite = async () => {
+        if (!isAuthenticated) return;
+        try {
+            if (isFavorite) {
+                await removeFavorite(locationId);
+                setIsFavorite(false);
+            } else {
+                await addFavorite(locationId);
+                setIsFavorite(true);
+            }
+        } catch (err) {
+            console.error('Error toggling favorite:', err);
         }
     };
 
@@ -102,23 +139,7 @@ export default function LocationDetailPage() {
     return (
         <div className="min-h-screen bg-[#0f0f1a]">
             {/* Navigation */}
-            <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0f0f1a]/80 backdrop-blur-lg border-b border-white/10">
-                <div className="max-w-7xl mx-auto px-6 lg:px-8">
-                    <div className="flex justify-between h-20 items-center">
-                        <Link href="/" className="flex items-center gap-2">
-                            <span className="text-2xl font-light tracking-wider text-white">
-                                Comfort<span className="font-semibold text-[#d4af37]">Booking</span>
-                            </span>
-                        </Link>
-                        <Link
-                            href="/browse"
-                            className="text-gray-400 hover:text-white font-light tracking-wide transition-colors"
-                        >
-                            ← Back
-                        </Link>
-                    </div>
-                </div>
-            </nav>
+            <Navbar />
 
             <div className="pt-24 pb-16 max-w-7xl mx-auto px-6 lg:px-8">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
@@ -169,7 +190,7 @@ export default function LocationDetailPage() {
 
                         {/* Rating */}
                         <div className="flex items-center gap-2 mb-6">
-                            <span className="text-[#d4af37] text-xl">★</span>
+                            <Star className="w-5 h-5 text-[#d4af37] fill-[#d4af37]" />
                             <span className="text-white text-lg font-light">
                                 {location.averageRating?.toFixed(1) || '0.0'}
                             </span>
@@ -180,7 +201,7 @@ export default function LocationDetailPage() {
 
                         {/* Address */}
                         <div className="flex items-start gap-3 mb-8 p-4 bg-[#1a1a2e]/50 rounded-lg border border-white/5">
-                            <span className="text-xl">📍</span>
+                            <MapPin className="w-5 h-5 text-[#d4af37] mt-0.5" />
                             <div>
                                 <p className="text-white font-light">{location.address}</p>
                                 <p className="text-gray-500 text-sm">{location.city} {location.postalCode}</p>
@@ -188,12 +209,42 @@ export default function LocationDetailPage() {
                         </div>
 
                         {/* CTA */}
-                        <Link
-                            href={`/book/${location.id}`}
-                            className="block w-full py-4 text-center bg-gradient-to-r from-[#d4af37] to-[#b8960f] text-[#0f0f1a] font-medium rounded-lg hover:shadow-[0_0_20px_rgba(212,175,55,0.3)] transition-all"
-                        >
-                            Book Now
-                        </Link>
+                        <div className="flex gap-3">
+                            <Link
+                                href={`/book/${location.id}`}
+                                className="flex-1 py-4 text-center bg-gradient-to-r from-[#d4af37] to-[#b8960f] text-[#0f0f1a] font-medium rounded-lg hover:shadow-[0_0_20px_rgba(212,175,55,0.3)] transition-all"
+                            >
+                                Book Now
+                            </Link>
+                            {isAuthenticated && (
+                                <button
+                                    onClick={handleToggleFavorite}
+                                    className={`px-4 py-4 rounded-lg border transition-all ${isFavorite
+                                        ? 'bg-[#d4af37]/20 border-[#d4af37] text-[#d4af37]'
+                                        : 'bg-[#1a1a2e] border-white/10 text-gray-400 hover:text-[#d4af37] hover:border-[#d4af37]'
+                                        }`}
+                                >
+                                    <Heart className={`w-5 h-5 ${isFavorite ? 'fill-[#d4af37]' : ''}`} />
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Contact Info */}
+                        {contacts.length > 0 && (
+                            <div className="mt-6 p-4 bg-[#1a1a2e]/50 rounded-lg border border-white/5">
+                                <h3 className="text-white font-light mb-3 flex items-center gap-2">
+                                    <Phone className="w-4 h-4 text-[#d4af37]" /> Contact
+                                </h3>
+                                {contacts.map((contact) => (
+                                    <div key={contact.id} className="flex justify-between items-center py-1">
+                                        <span className="text-gray-400 text-sm">{contact.contactType}</span>
+                                        <a href={`tel:${contact.phoneNumber}`} className="text-[#d4af37] hover:underline">
+                                            {contact.phoneNumber}
+                                        </a>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -221,7 +272,7 @@ export default function LocationDetailPage() {
                                                     <div>
                                                         <span className="text-gray-300">{variant.name}</span>
                                                         <span className="text-gray-500 text-sm ml-2">
-                                                            ({variant.durationMinutes} min)
+                                                            ({variant.durationMinutes || variant.duration_minutes} min)
                                                         </span>
                                                     </div>
                                                     <span className="text-[#d4af37] font-medium">
@@ -231,6 +282,49 @@ export default function LocationDetailPage() {
                                             ))}
                                         </div>
                                     )}
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                )}
+
+                {/* Reviews Section */}
+                {reviews.length > 0 && (
+                    <section className="mt-16">
+                        <h2 className="text-2xl font-light text-white mb-8">Customer Reviews</h2>
+                        <div className="grid gap-4">
+                            {reviews.map((review) => (
+                                <div
+                                    key={review.id}
+                                    className="p-6 bg-[#1a1a2e]/50 border border-white/5 rounded-xl"
+                                >
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-8 h-8 rounded-full bg-[#d4af37]/20 flex items-center justify-center">
+                                                <User className="w-4 h-4 text-[#d4af37]" />
+                                            </div>
+                                            <span className="text-white font-light">
+                                                {review.user_name || 'Customer'}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            {[...Array(5)].map((_, i) => (
+                                                <Star
+                                                    key={i}
+                                                    className={`w-4 h-4 ${i < review.rating
+                                                        ? 'text-[#d4af37] fill-[#d4af37]'
+                                                        : 'text-gray-600'
+                                                        }`}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                    {review.comment && (
+                                        <p className="text-gray-400 font-light">{review.comment}</p>
+                                    )}
+                                    <p className="text-gray-600 text-sm mt-2">
+                                        {new Date(review.created_at || review.createdAt || '').toLocaleDateString('sv-SE')}
+                                    </p>
                                 </div>
                             ))}
                         </div>

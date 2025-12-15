@@ -45,12 +45,11 @@ class ReviewRepository(BaseRepository[ReviewResponse]):
             if not result:
                 raise RuntimeError("Failed to create review")
             return result
-        
 
     async def get_business_reviews(
-        self, business_id: UUID, limit: int = 100, offset: int = 0
+        self, location_id: UUID, limit: int = 100, offset: int = 0
     ) -> List[ReviewResponse]:
-        """Get all reviews for a business."""
+        """Get all reviews for a location (passed as location_id)."""
         query = """
             SELECT 
                 r.id, r.booking_id, r.rating, r.comment, r.created_at,
@@ -60,14 +59,13 @@ class ReviewRepository(BaseRepository[ReviewResponse]):
             FROM reviews r
             JOIN bookings b ON r.booking_id = b.id
             JOIN users u ON b.customer_id = u.id
-            JOIN locations l ON b.location_id = l.id
-            WHERE l.business_id = %s
+            WHERE b.location_id = %s
             ORDER BY r.created_at DESC
             LIMIT %s OFFSET %s
         """
 
         async with self.conn.cursor(row_factory=class_row(ReviewResponse)) as cur:
-            await cur.execute(query, (business_id, limit, offset))
+            await cur.execute(query, (location_id, limit, offset))
             return await cur.fetchall()
 
     async def add_favorite(self, user_id: UUID, location_id: UUID) -> FavoriteResponse:
@@ -95,7 +93,6 @@ class ReviewRepository(BaseRepository[ReviewResponse]):
             if not result:
                 raise RuntimeError("Failed to add favorite")
             return result
-
 
     async def remove_favorite(self, user_id: UUID, location_id: UUID) -> bool:
         """Remove location from user's favorites."""

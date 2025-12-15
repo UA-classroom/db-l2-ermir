@@ -44,18 +44,18 @@ class EmployeeRepository(BaseRepository[EmployeeResponse]):
             offset: Number of records to skip
 
         Returns:
-            List of employees
+            List of employees with user names
         """
 
         conditions = []
         params = []
 
         if location_id is not None:
-            conditions.append(sql.SQL("location_id = %s"))
+            conditions.append(sql.SQL("e.location_id = %s"))
             params.append(location_id)
 
         if is_active is not None:
-            conditions.append(sql.SQL("is_active = %s"))
+            conditions.append(sql.SQL("e.is_active = %s"))
             params.append(is_active)
 
         # Build WHERE clause safely
@@ -67,10 +67,27 @@ class EmployeeRepository(BaseRepository[EmployeeResponse]):
         query = sql.Composed(
             [
                 sql.SQL(
-                    "SELECT id, user_id, location_id, job_title, bio, color_code, is_active FROM employees WHERE "
+                    """SELECT e.id, e.user_id, e.location_id, e.job_title, e.bio, e.color_code, e.is_active,
+                       u.first_name, u.last_name,
+                       COALESCE(
+                           json_agg(
+                               json_build_object(
+                                   'service_variant_id', es.service_variant_id,
+                                   'custom_price', es.custom_price,
+                                   'custom_duration', es.custom_duration
+                               )
+                           ) FILTER (WHERE es.service_variant_id IS NOT NULL),
+                           '[]'::json
+                       ) as skills
+                       FROM employees e
+                       LEFT JOIN users u ON e.user_id = u.id
+                       LEFT JOIN employee_skills es ON e.id = es.employee_id
+                       WHERE """
                 ),
                 where_clause,
-                sql.SQL(" ORDER BY job_title ASC LIMIT %s OFFSET %s"),
+                sql.SQL(
+                    " GROUP BY e.id, u.id ORDER BY e.job_title ASC LIMIT %s OFFSET %s"
+                ),
             ]
         )
         params.extend([limit, offset])

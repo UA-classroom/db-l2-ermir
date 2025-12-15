@@ -31,22 +31,32 @@ export interface UserResponse {
     last_name: string;
     role: 'customer' | 'provider' | 'admin';
     phone_number?: string;
+    mobile_number?: string; // Backend snake_case field
+    mobileNumber?: string; // Just in case camelCase
     is_active: boolean;
 }
 
 // Auth API functions
 export async function login(credentials: LoginCredentials): Promise<TokenResponse> {
-    // FastAPI OAuth2 expects form data
-    const formData = new FormData();
+    // Use native fetch to avoid axios Content-Type issues with form data
+    const formData = new URLSearchParams();
     formData.append('username', credentials.email);
     formData.append('password', credentials.password);
 
-    const response = await api.post<TokenResponse>('/auth/login', formData, {
+    const response = await fetch('http://localhost:8000/api/v1/auth/login', {
+        method: 'POST',
         headers: {
-            'Content-Type': 'multipart/form-data',
+            'Content-Type': 'application/x-www-form-urlencoded',
         },
+        body: formData,
     });
-    return response.data;
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw { response: { data: error, status: response.status } };
+    }
+
+    return response.json();
 }
 
 export async function registerCustomer(data: CustomerRegisterData): Promise<UserResponse> {
