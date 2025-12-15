@@ -1,4 +1,5 @@
 """Seed bookings table with test data."""
+
 import asyncio
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -31,7 +32,11 @@ async def seed_bookings(conn: AsyncConnection) -> None:
         employee_rows = await cur.fetchall()
         employees = {}
         for emp_id, email, loc_id, biz_slug in employee_rows:
-            employees[email] = {"id": emp_id, "location_id": loc_id, "business_slug": biz_slug}
+            employees[email] = {
+                "id": emp_id,
+                "location_id": loc_id,
+                "business_slug": biz_slug,
+            }
 
     # Get service variant IDs with prices
     async with conn.cursor() as cur:
@@ -46,11 +51,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
         service_variants = {}
         for var_id, svc_name, var_name, price, duration, biz_slug in variant_rows:
             key = f"{biz_slug}:{svc_name}:{var_name}"
-            service_variants[key] = {
-                "id": var_id,
-                "price": price,
-                "duration": duration
-            }
+            service_variants[key] = {"id": var_id, "price": price, "duration": duration}
 
     # Get booking status IDs
     async with conn.cursor() as cur:
@@ -74,7 +75,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "Medium Hair",
             "start_offset_days": -30,
             "start_hour": 10,
-            "status": "completed"
+            "status": "completed",
         },
         {
             "customer": "linnea.olsson@email.se",
@@ -83,7 +84,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "Long Hair",
             "start_offset_days": -28,
             "start_hour": 14,
-            "status": "completed"
+            "status": "completed",
         },
         {
             "customer": "maja.eriksson@email.se",
@@ -92,7 +93,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "Balayage",
             "start_offset_days": -25,
             "start_hour": 10,
-            "status": "completed"
+            "status": "completed",
         },
         {
             "customer": "alice.pettersson@email.se",
@@ -101,7 +102,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "Basic Treatment",
             "start_offset_days": -22,
             "start_hour": 16,
-            "status": "completed"
+            "status": "completed",
         },
         {
             "customer": "ella.samuelsson@email.se",
@@ -110,7 +111,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "Standard Cut",
             "start_offset_days": -20,
             "start_hour": 11,
-            "status": "completed"
+            "status": "completed",
         },
         {
             "customer": "wilma.sandberg@email.se",
@@ -119,7 +120,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "Short Hair",
             "start_offset_days": -18,
             "start_hour": 13,
-            "status": "completed"
+            "status": "completed",
         },
         {
             "customer": "ebba.carlsson@email.se",
@@ -128,7 +129,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "Single Color - Long",
             "start_offset_days": -15,
             "start_hour": 9,
-            "status": "completed"
+            "status": "completed",
         },
         {
             "customer": "astrid.forsberg@email.se",
@@ -137,7 +138,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "Full Highlights",
             "start_offset_days": -12,
             "start_hour": 10,
-            "status": "completed"
+            "status": "completed",
         },
         {
             "customer": "vera.lundqvist@email.se",
@@ -146,7 +147,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "Medium Hair",
             "start_offset_days": -10,
             "start_hour": 14,
-            "status": "completed"
+            "status": "completed",
         },
         {
             "customer": "saga.holmberg@email.se",
@@ -155,7 +156,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "Olaplex Repair",
             "start_offset_days": -8,
             "start_hour": 11,
-            "status": "completed"
+            "status": "completed",
         },
         {
             "customer": "emma.svensson@email.se",
@@ -164,7 +165,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "Partial Highlights",
             "start_offset_days": -7,
             "start_hour": 10,
-            "status": "completed"
+            "status": "completed",
         },
         {
             "customer": "linnea.olsson@email.se",
@@ -173,9 +174,8 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "Single Color - Medium",
             "start_offset_days": -5,
             "start_hour": 9,
-            "status": "completed"
+            "status": "completed",
         },
-
         # ===== NIKITA HAIR SALON - CONFIRMED BOOKINGS (Upcoming) =====
         {
             "customer": "maja.eriksson@email.se",
@@ -184,7 +184,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "Short Hair",
             "start_offset_days": 2,
             "start_hour": 10,
-            "status": "confirmed"
+            "status": "confirmed",
         },
         {
             "customer": "alice.pettersson@email.se",
@@ -193,7 +193,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "Standard Cut",
             "start_offset_days": 3,
             "start_hour": 11,
-            "status": "confirmed"
+            "status": "confirmed",
         },
         {
             "customer": "ella.samuelsson@email.se",
@@ -202,7 +202,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "Long Hair",
             "start_offset_days": 4,
             "start_hour": 14,
-            "status": "confirmed"
+            "status": "confirmed",
         },
         {
             "customer": "wilma.sandberg@email.se",
@@ -211,7 +211,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "Balayage",
             "start_offset_days": 5,
             "start_hour": 10,
-            "status": "confirmed"
+            "status": "confirmed",
         },
         {
             "customer": "ebba.carlsson@email.se",
@@ -220,7 +220,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "Keratin Treatment",
             "start_offset_days": 6,
             "start_hour": 9,
-            "status": "confirmed"
+            "status": "confirmed",
         },
         {
             "customer": "astrid.forsberg@email.se",
@@ -229,9 +229,8 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "Medium Hair",
             "start_offset_days": 7,
             "start_hour": 13,
-            "status": "confirmed"
+            "status": "confirmed",
         },
-
         # ===== NIKITA HAIR SALON - PENDING/CANCELLED =====
         {
             "customer": "vera.lundqvist@email.se",
@@ -240,7 +239,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "Short Hair",
             "start_offset_days": 8,
             "start_hour": 10,
-            "status": "pending"
+            "status": "pending",
         },
         {
             "customer": "saga.holmberg@email.se",
@@ -249,7 +248,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "Premium Cut & Beard Trim",
             "start_offset_days": -3,
             "start_hour": 15,
-            "status": "cancelled"
+            "status": "cancelled",
         },
         {
             "customer": "emma.svensson@email.se",
@@ -258,9 +257,8 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "Single Color - Long",
             "start_offset_days": -2,
             "start_hour": 10,
-            "status": "no_show"
+            "status": "no_show",
         },
-
         # ===== MARIO'S ITALIAN RESTAURANT - COMPLETED =====
         {
             "customer": "oskar.larsson@email.se",
@@ -269,7 +267,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "2 Person Table",
             "start_offset_days": -14,
             "start_hour": 19,
-            "status": "completed"
+            "status": "completed",
         },
         {
             "customer": "alexander.persson@email.se",
@@ -278,7 +276,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "4 Person Table",
             "start_offset_days": -10,
             "start_hour": 18,
-            "status": "completed"
+            "status": "completed",
         },
         {
             "customer": "william.gustafsson@email.se",
@@ -287,7 +285,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "2 Person Table",
             "start_offset_days": -7,
             "start_hour": 20,
-            "status": "completed"
+            "status": "completed",
         },
         {
             "customer": "lucas.jonsson@email.se",
@@ -296,7 +294,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "Pasta Making Class",
             "start_offset_days": -6,
             "start_hour": 15,
-            "status": "completed"
+            "status": "completed",
         },
         {
             "customer": "hugo.jakobsson@email.se",
@@ -305,9 +303,8 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "10-15 Guests",
             "start_offset_days": -4,
             "start_hour": 18,
-            "status": "completed"
+            "status": "completed",
         },
-
         # ===== MARIO'S ITALIAN RESTAURANT - CONFIRMED =====
         {
             "customer": "elias.berg@email.se",
@@ -316,7 +313,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "6+ Person Table",
             "start_offset_days": 3,
             "start_hour": 19,
-            "status": "confirmed"
+            "status": "confirmed",
         },
         {
             "customer": "liam.lundgren@email.se",
@@ -325,7 +322,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "Pizza Master Class",
             "start_offset_days": 5,
             "start_hour": 16,
-            "status": "confirmed"
+            "status": "confirmed",
         },
         {
             "customer": "noah.hedlund@email.se",
@@ -334,7 +331,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "4 Person Table",
             "start_offset_days": 7,
             "start_hour": 18,
-            "status": "confirmed"
+            "status": "confirmed",
         },
         {
             "customer": "oliver.wallin@email.se",
@@ -343,9 +340,8 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "16-25 Guests",
             "start_offset_days": 14,
             "start_hour": 17,
-            "status": "confirmed"
+            "status": "confirmed",
         },
-
         # ===== MARIO'S ITALIAN RESTAURANT - CANCELLED =====
         {
             "customer": "adam.bjork@email.se",
@@ -354,9 +350,8 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "2 Person Table",
             "start_offset_days": -1,
             "start_hour": 19,
-            "status": "cancelled"
+            "status": "cancelled",
         },
-
         # ===== FITZONE GYM - COMPLETED =====
         {
             "customer": "oskar.larsson@email.se",
@@ -365,7 +360,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "Single Session",
             "start_offset_days": -20,
             "start_hour": 7,
-            "status": "completed"
+            "status": "completed",
         },
         {
             "customer": "alexander.persson@email.se",
@@ -374,7 +369,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "Drop-in Class",
             "start_offset_days": -18,
             "start_hour": 18,
-            "status": "completed"
+            "status": "completed",
         },
         {
             "customer": "william.gustafsson@email.se",
@@ -383,7 +378,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "Drop-in Class",
             "start_offset_days": -16,
             "start_hour": 17,
-            "status": "completed"
+            "status": "completed",
         },
         {
             "customer": "lucas.jonsson@email.se",
@@ -392,7 +387,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "5 Session Package",
             "start_offset_days": -15,
             "start_hour": 8,
-            "status": "completed"
+            "status": "completed",
         },
         {
             "customer": "hugo.jakobsson@email.se",
@@ -401,7 +396,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "Drop-in Class",
             "start_offset_days": -13,
             "start_hour": 18,
-            "status": "completed"
+            "status": "completed",
         },
         {
             "customer": "elias.berg@email.se",
@@ -410,7 +405,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "10 Class Package",
             "start_offset_days": -11,
             "start_hour": 19,
-            "status": "completed"
+            "status": "completed",
         },
         {
             "customer": "liam.lundgren@email.se",
@@ -419,7 +414,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "Single Session",
             "start_offset_days": -9,
             "start_hour": 9,
-            "status": "completed"
+            "status": "completed",
         },
         {
             "customer": "noah.hedlund@email.se",
@@ -428,9 +423,8 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "10 Class Package",
             "start_offset_days": -8,
             "start_hour": 17,
-            "status": "completed"
+            "status": "completed",
         },
-
         # ===== FITZONE GYM - CONFIRMED =====
         {
             "customer": "oliver.wallin@email.se",
@@ -439,7 +433,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "10 Session Package",
             "start_offset_days": 1,
             "start_hour": 7,
-            "status": "confirmed"
+            "status": "confirmed",
         },
         {
             "customer": "adam.bjork@email.se",
@@ -448,7 +442,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "Monthly Unlimited",
             "start_offset_days": 2,
             "start_hour": 18,
-            "status": "confirmed"
+            "status": "confirmed",
         },
         {
             "customer": "oskar.larsson@email.se",
@@ -457,7 +451,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "10 Class Package",
             "start_offset_days": 3,
             "start_hour": 19,
-            "status": "confirmed"
+            "status": "confirmed",
         },
         {
             "customer": "alexander.persson@email.se",
@@ -466,7 +460,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "Single Session",
             "start_offset_days": 4,
             "start_hour": 10,
-            "status": "confirmed"
+            "status": "confirmed",
         },
         {
             "customer": "william.gustafsson@email.se",
@@ -475,9 +469,8 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "Drop-in Class",
             "start_offset_days": 5,
             "start_hour": 18,
-            "status": "confirmed"
+            "status": "confirmed",
         },
-
         # ===== BERGSTRÖM SPA & WELLNESS - COMPLETED =====
         {
             "customer": "emma.svensson@email.se",
@@ -486,7 +479,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "60 Minutes",
             "start_offset_days": -21,
             "start_hour": 11,
-            "status": "completed"
+            "status": "completed",
         },
         {
             "customer": "linnea.olsson@email.se",
@@ -495,7 +488,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "90 Minutes",
             "start_offset_days": -17,
             "start_hour": 14,
-            "status": "completed"
+            "status": "completed",
         },
         {
             "customer": "maja.eriksson@email.se",
@@ -504,7 +497,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "60 Minutes",
             "start_offset_days": -14,
             "start_hour": 10,
-            "status": "completed"
+            "status": "completed",
         },
         {
             "customer": "alice.pettersson@email.se",
@@ -513,7 +506,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "30 Minutes",
             "start_offset_days": -11,
             "start_hour": 16,
-            "status": "completed"
+            "status": "completed",
         },
         {
             "customer": "ella.samuelsson@email.se",
@@ -522,7 +515,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "90 Minutes",
             "start_offset_days": -9,
             "start_hour": 12,
-            "status": "completed"
+            "status": "completed",
         },
         {
             "customer": "wilma.sandberg@email.se",
@@ -531,9 +524,8 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "60 Minutes",
             "start_offset_days": -6,
             "start_hour": 15,
-            "status": "completed"
+            "status": "completed",
         },
-
         # ===== BERGSTRÖM SPA & WELLNESS - CONFIRMED =====
         {
             "customer": "ebba.carlsson@email.se",
@@ -542,7 +534,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "90 Minutes",
             "start_offset_days": 2,
             "start_hour": 11,
-            "status": "confirmed"
+            "status": "confirmed",
         },
         {
             "customer": "astrid.forsberg@email.se",
@@ -551,7 +543,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "60 Minutes",
             "start_offset_days": 4,
             "start_hour": 14,
-            "status": "confirmed"
+            "status": "confirmed",
         },
         {
             "customer": "vera.lundqvist@email.se",
@@ -560,7 +552,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "60 Minutes",
             "start_offset_days": 6,
             "start_hour": 10,
-            "status": "confirmed"
+            "status": "confirmed",
         },
         {
             "customer": "saga.holmberg@email.se",
@@ -569,9 +561,8 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "30 Minutes",
             "start_offset_days": 8,
             "start_hour": 16,
-            "status": "confirmed"
+            "status": "confirmed",
         },
-
         # ===== BERGSTRÖM SPA & WELLNESS - NO SHOW =====
         {
             "customer": "emma.svensson@email.se",
@@ -580,8 +571,18 @@ async def seed_bookings(conn: AsyncConnection) -> None:
             "variant": "60 Minutes",
             "start_offset_days": -3,
             "start_hour": 11,
-            "status": "no_show"
-        }
+            "status": "no_show",
+        },
+        # ===== MANUALLY ADDED FOR REVIEW TESTING =====
+        {
+            "customer": "emma.svensson@email.se",
+            "employee": "sofia@spa.se",
+            "service": "Swedish Massage",
+            "variant": "60 Minutes",
+            "start_offset_days": -2,
+            "start_hour": 14,
+            "status": "completed",
+        },
     ]
 
     booking_count = 0
@@ -600,8 +601,7 @@ async def seed_bookings(conn: AsyncConnection) -> None:
 
             # Calculate booking times
             start_time = booking_time(
-                booking_data["start_offset_days"],
-                booking_data["start_hour"]
+                booking_data["start_offset_days"], booking_data["start_hour"]
             )
             end_time = start_time + timedelta(minutes=variant_info["duration"])
 
@@ -623,8 +623,8 @@ async def seed_bookings(conn: AsyncConnection) -> None:
                     start_time,
                     end_time,
                     variant_info["price"],
-                    None
-                )
+                    None,
+                ),
             )
             booking_count += 1
 

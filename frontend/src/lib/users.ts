@@ -29,3 +29,53 @@ export async function changePassword(data: ChangePasswordData) {
     });
     return response.data;
 }
+// Address interfaces
+export interface Address {
+    id: string;
+    street_address: string;
+    postal_code: string;
+    city: string;
+    country: string;
+    is_default: boolean;
+}
+
+export interface CreateAddressData {
+    street_address: string;
+    postal_code: string;
+    city: string;
+    country?: string;
+    is_default?: boolean;
+}
+
+export interface UpdateAddressData {
+    street_address?: string;
+    postal_code?: string;
+    city?: string;
+    country?: string;
+    is_default?: boolean;
+}
+
+// ... existing code ...
+
+// Get user addresses
+export async function getAddresses(): Promise<Address[]> {
+    const response = await api.get('/users/me/addresses');
+    return response.data;
+}
+
+// Create address
+export async function createAddress(data: CreateAddressData): Promise<Address> {
+    const response = await api.post('/users/me/addresses', data);
+    return response.data;
+}
+
+// Update address
+export async function updateAddress(addressId: string, data: UpdateAddressData): Promise<Address> {
+    const response = await api.put(`/users/me/addresses/${addressId}`, data);
+    return response.data;
+}
+
+// Delete address
+export async function deleteAddress(addressId: string): Promise<void> {
+    await api.delete(`/users/me/addresses/${addressId}`);
+}

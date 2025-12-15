@@ -93,6 +93,22 @@ export async function cancelBooking(bookingId: string): Promise<void> {
     await api.patch(`/bookings/${bookingId}/status`, { status: 'cancelled' });
 }
 
+export interface RescheduleBookingData {
+    startTime: string;
+    endTime: string;
+    customerNote?: string;
+}
+
+// Reschedule booking
+export async function rescheduleBooking(bookingId: string, data: RescheduleBookingData): Promise<Booking> {
+    const response = await api.put(`/bookings/${bookingId}`, {
+        start_time: data.startTime,
+        end_time: data.endTime,
+        customer_note: data.customerNote,
+    });
+    return response.data;
+}
+
 // Get available time slots
 export async function getAvailableSlots(
     date: string,
