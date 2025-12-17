@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
-import { updateProfile, getAddresses, createAddress, updateAddress, deleteAddress, changePassword, Address, CreateAddressData, UpdateAddressData } from '@/lib/users';
+import { updateProfile, getAddresses, createAddress, updateAddress, deleteAddress, changePassword, deleteUser, Address, CreateAddressData, UpdateAddressData } from '@/lib/users';
 import { ProtectedRoute } from '@/components/common';
 import { Calendar, Sparkles, MapPin, Plus, Trash2, Edit2, X, Check, Lock } from 'lucide-react';
 
@@ -121,6 +121,24 @@ export default function ProfilePage() {
         } catch (err) {
             console.error('Error saving address:', err);
             alert('Failed to save address');
+        }
+    };
+
+    const handleDeleteAccount = async () => {
+        if (!confirm('Are you sure you want to delete your account? This action cannot be undone.')) return;
+
+        // Secondary confirmation
+        if (!confirm('This will permanently delete your account, bookings, and all associated data. Are you absolutely sure?')) return;
+
+        try {
+            await deleteUser();
+            logout();
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            router.push('/');
+        } catch (err) {
+            console.error('Error deleting account:', err);
+            alert('Failed to delete account. Please try again.');
         }
     };
 
@@ -345,15 +363,22 @@ export default function ProfilePage() {
                         </Link>
                     </div>
 
-                    {/* Danger Zone */}
                     <div className="mt-12 pt-8 border-t border-white/5">
                         <h3 className="text-red-400 text-sm font-light mb-4">Danger Zone</h3>
-                        <button
-                            onClick={handleLogout}
-                            className="px-6 py-3 border border-red-400/30 text-red-400 font-light rounded-lg hover:bg-red-400/10 transition-all"
-                        >
-                            Sign Out
-                        </button>
+                        <div className="flex gap-4">
+                            <button
+                                onClick={handleLogout}
+                                className="px-6 py-3 border border-gray-600 text-gray-400 font-light rounded-lg hover:bg-white/5 transition-all"
+                            >
+                                Sign Out
+                            </button>
+                            <button
+                                onClick={handleDeleteAccount}
+                                className="px-6 py-3 border border-red-400/30 text-red-400 font-light rounded-lg hover:bg-red-400/10 transition-all"
+                            >
+                                Delete Account
+                            </button>
+                        </div>
                     </div>
                 </div>
 

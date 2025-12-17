@@ -66,3 +66,11 @@ export interface Category {
     name: string;
     slug: string;
 }
+
+export interface Contact {
+    id: number;
+    locationId: string;
+    contactType: string;
+    phoneNumber: string;
+    createdAt?: string;
+}

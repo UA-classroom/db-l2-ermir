@@ -79,3 +79,8 @@ export async function updateAddress(addressId: string, data: UpdateAddressData):
 export async function deleteAddress(addressId: string): Promise<void> {
     await api.delete(`/users/me/addresses/${addressId}`);
 }
+
+// Delete user account
+export async function deleteUser(): Promise<void> {
+    await api.delete('/users/me');
+}

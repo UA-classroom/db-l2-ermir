@@ -37,12 +37,15 @@ def get_product_service(
 async def get_products(
     conn: Annotated[AsyncConnection, Depends(get_db_conn)],
     location_id: Optional[UUID] = Query(None, description="Filter by location"),
+    business_id: Optional[UUID] = Query(None, description="Filter by business"),
     limit: int = Query(100, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
-    """List products with optional location filter."""
+    """List products with optional location or business filter."""
     repo = ProductRepository(conn)
-    return await repo.get_products(location_id=location_id, limit=limit, offset=offset)
+    return await repo.get_products(
+        location_id=location_id, business_id=business_id, limit=limit, offset=offset
+    )
 
 
 @router.get("/{product_id}", response_model=ProductResponse)
@@ -118,6 +121,6 @@ async def get_inventory_logs(
     """Get inventory change history for a product (provider only)."""
 
     await verify_product_ownership(product_id, current_user, conn)
-    
+
     repo = ProductRepository(conn)
     return await repo.get_inventory_logs(product_id, limit, offset)

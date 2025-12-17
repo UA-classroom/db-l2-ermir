@@ -56,6 +56,7 @@ class BusinessRepository(BaseRepository[BusinessResponse]):
         name: Optional[str] = None,
         category: Optional[str] = None,
         min_rating: Optional[float] = None,
+        owner_id: Optional[UUID] = None,
         limit: int = 100,
         offset: int = 0,
     ) -> list[BusinessResponse]:
@@ -101,6 +102,10 @@ class BusinessRepository(BaseRepository[BusinessResponse]):
         if city:
             query += " AND l.city ILIKE %s"
             params.append(f"%{city}%")
+
+        if owner_id:
+            query += " AND b.owner_id = %s"
+            params.append(owner_id)
 
         query += " GROUP BY b.id"
 

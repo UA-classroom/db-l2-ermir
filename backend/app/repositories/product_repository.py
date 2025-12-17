@@ -17,7 +17,11 @@ class ProductRepository(BaseRepository[ProductResponse]):
         self.table = "products"
 
     async def get_products(
-        self, location_id: Optional[UUID] = None, limit: int = 100, offset: int = 0
+        self,
+        location_id: Optional[UUID] = None,
+        business_id: Optional[UUID] = None,
+        limit: int = 100,
+        offset: int = 0,
     ) -> list[ProductResponse]:
         """List products with optional location filter."""
         if location_id:
@@ -29,6 +33,17 @@ class ProductRepository(BaseRepository[ProductResponse]):
                 LIMIT %s OFFSET %s
             """
             params = (location_id, limit, offset)
+        elif business_id:
+            # Filter by business via join
+            query = """
+                SELECT p.id, p.location_id, p.name, p.sku, p.price, p.stock_quantity
+                FROM products p
+                JOIN locations l ON p.location_id = l.id
+                WHERE l.business_id = %s
+                ORDER BY p.name ASC
+                LIMIT %s OFFSET %s
+            """
+            params = (business_id, limit, offset)
         else:
             query = """
                 SELECT id, location_id, name, sku, price, stock_quantity
@@ -82,7 +97,7 @@ class ProductRepository(BaseRepository[ProductResponse]):
 
                 if not updated_product:
                     raise NotFoundError(f"Product with ID {product_id} not found")
-                
+
                 # Log the change
                 query_log = """
                     INSERT INTO inventory_logs (product_id, change_amount, reason)
@@ -91,7 +106,6 @@ class ProductRepository(BaseRepository[ProductResponse]):
                 await cur.execute(query_log, (product_id, change_amount, reason))
 
         return updated_product
-
 
     async def get_inventory_logs(
         self, product_id: UUID, limit: int = 50, offset: int = 0

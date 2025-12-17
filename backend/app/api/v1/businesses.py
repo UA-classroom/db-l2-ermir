@@ -113,6 +113,7 @@ async def get_businesses(
     min_rating: Optional[float] = Query(
         None, ge=1, le=5, description="Minimum average rating (1-5)"
     ),
+    owner_id: Optional[UUID] = Query(None, description="Filter by owner ID"),
     offset: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
 ):
@@ -123,6 +124,7 @@ async def get_businesses(
     - **name**: Filter by business name (case-insensitive partial match)
     - **category**: Filter by category (e.g., "Hair", "Nails", "Spa")
     - **min_rating**: Minimum average rating (1-5 stars)
+    - **owner_id**: Filter by the UUID of the business owner
     - **offset**: Number of results to skip (pagination)
     - **limit**: Maximum number of results (max 100)
     """

@@ -126,3 +126,9 @@ export async function getAvailableSlots(
     });
     return response.data;
 }
+
+// Get bookings for a location (Provider)
+export async function getLocationBookings(locationId: string): Promise<Booking[]> {
+    const response = await api.get(`/bookings/locations/${locationId}`);
+    return response.data;
+}

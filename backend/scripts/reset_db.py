@@ -21,6 +21,7 @@ from scripts.seeds.core.employees import seed_employees
 from scripts.seeds.core.bookings import seed_bookings
 from scripts.seeds.core.reviews import seed_reviews
 from scripts.seeds.core.coupons import seed_coupons
+from scripts.seeds.core.products import seed_products
 from scripts.seeds.core.orders import seed_orders
 from scripts.seeds.core.images import seed_location_images
 
@@ -74,6 +75,7 @@ async def run_seeds(conn, only=None):
         ("bookings", seed_bookings),
         ("reviews", seed_reviews),
         ("coupons", seed_coupons),
+        ("products", seed_products),
         ("orders", seed_orders),
         ("images", seed_location_images),
     ]

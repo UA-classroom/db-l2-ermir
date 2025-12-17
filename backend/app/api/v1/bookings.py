@@ -149,7 +149,7 @@ async def update_booking_status(
 async def delete_booking(
     booking_id: UUID,
     conn: Annotated[AsyncConnection, Depends(get_db_conn)],
-    current_user: Annotated[UserDB, Depends(get_current_active_user)],
+    current_user: Annotated[UserDB, Depends(get_current_provider)],
 ):
     """Delete."""
     # Verify booking ownership
