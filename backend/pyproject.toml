@@ -1,0 +1,39 @@
+[project]
+name = "db-l2-ermir"
+version = "0.1.0"
+description = "Bokadirekt clone - booking platform API for beauty and health services"
+requires-python = ">=3.11"
+dependencies = [
+    "bcrypt==4.0.1",
+    "email-validator>=2.3.0",
+    "faker>=24.0.0",
+    "fastapi>=0.123.0",
+    "passlib[bcrypt]>=1.7.4",
+    "psycopg[binary,pool]>=3.2.13",
+    "pydantic-settings>=2.12.0",
+    "pytest>=9.0.1",
+    "python-dotenv>=1.2.1",
+    "python-jose[cryptography]>=3.5.0",
+    "python-multipart>=0.0.20",
+    "uuid-utils>=0.12.0",
+    "uvicorn[standard]>=0.38.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[dependency-groups]
+dev = [
+    "asgi-lifespan>=2.1.0",
+    "httpx>=0.28.1",
+    "pytest>=9.0.1",
+    "pytest-asyncio>=1.3.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
