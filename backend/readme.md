@@ -1,22 +1,93 @@
-# Getting started - A suggestion
+# Bokadirekt Clone - Backend API
 
-## FILE STRUCTURE EXPLANATION
+FastAPI backend for a booking platform for beauty and health services.
 
-- app.py is the main entrypoint which starts fastapi
-- db_setup.py contains a function to get a connection to the database, but can also be executed as a script to create some tables (you have to decide which tables)
-- db.py should contain functions that simply perform queries and return the result, or raise exceptions when things go wrong. We split things up to keep the app.py file a bit cleaner.
-- schemas.py is used for validation, should you decide to use pydantic (HIGHLY RECOMMEND, won't be an option in coming courses)
+## Tech Stack
 
-Ultimately, you can play around with a folder structure if you want to, but we're going to learn a proper structure in our upcoming courses.
+- **FastAPI** - Modern Python web framework
+- **PostgreSQL** - Database with UUID v7 support
+- **Psycopg 3** - PostgreSQL adapter
+- **Pydantic** - Data validation and settings
+- **JWT** - Authentication
+- **UV** - Fast Python package manager
 
-## Get started
-1. Install the dependencies, e.g (fastapi[standard], psycopg2, python-dotenv) into a virtual environment using pip install -r requirements.txt
-2. Create a .env-file and create a DATABASE and PASSWORD variable
-3. Make sure you understand how fastapi works
-4. Start by creating some tables using the db_setup file
-5. Start the api using uvicorn app:app --reload
-6. Create some basic endpoints, maybe a basic get which fetches all entries for a table. Test it using postman or the built in swagger interface at localhost:8000/docs
-7. Create some basic database-functions that return results from a cursor, your endpoints should utilize these functions
+## Project Structure
+
+```
+backend/
+├── app/
+│   ├── api/
+│   │   ├── deps.py              # Dependency injection
+│   │   └── v1/                  # API v1 routes
+│   │       ├── admin.py         # Admin endpoints
+│   │       ├── auth.py          # Authentication
+│   │       ├── bookings.py      # Booking management
+│   │       ├── businesses.py    # Business & locations
+│   │       ├── employees.py     # Employee management
+│   │       ├── orders.py        # Order processing
+│   │       ├── products.py      # Product management
+│   │       ├── reviews.py       # Review system
+│   │       ├── services.py      # Service catalog
+│   │       └── users.py         # User management
+│   ├── models/                  # Pydantic models
+│   ├── repositories/            # Database repositories
+│   ├── services/                # Business logic
+│   ├── config.py                # Configuration
+│   ├── database.py              # Database connection
+│   └── main.py                  # FastAPI app entry
+├── sql/
+│   └── schema.sql               # Database schema
+├── scripts/
+│   └── reset_db.py              # Database reset & seed
+├── tests/                       # Tests
+└── pyproject.toml               # Dependencies
+```
+
+## Setup
+
+### 1. Install Dependencies
+
+This project uses **UV** for Python package management:
+
+```bash
+# Install UV if you haven't already
+# Windows (PowerShell):
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# macOS/Linux:
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install dependencies
+uv sync
+```
+
+### 2. Database Setup
+
+Create a PostgreSQL database and configure environment variables:
+
+```bash
+# Create .env file
+cp .env.example .env
+```
+
+Edit `.env`:
+
+```env
+DATABASE_URL=postgresql://username:password@localhost:5432/dbname
+SECRET_KEY=your-secret-key-here
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+```
+
+### 3. Initialize Database
+
+```bash
+# Run schema creation
+psql -U username -d dbname -f sql/schema.sql
+
+# Seed database with sample data
+uv run python scripts/reset_db.py
+```
 
 ## Start Server
 ```bash
