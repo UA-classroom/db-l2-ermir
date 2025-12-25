@@ -111,9 +111,7 @@ class EmployeeRepository(BaseRepository[EmployeeResponse]):
             FROM employees
             WHERE id = %s
         """
-        async with self.conn.cursor(row_factory=class_row(EmployeeResponse)) as cur:
-            await cur.execute(query, (employee_id,))
-            return await cur.fetchone()
+        return await self._execute_one(query, (employee_id,), EmployeeResponse)
 
     async def get_employee_detail(self, employee_id: UUID) -> Optional[EmployeeDetail]:
         """
@@ -148,27 +146,15 @@ class EmployeeRepository(BaseRepository[EmployeeResponse]):
         Returns:
             Created employee
         """
-        query = """
-            INSERT INTO employees (user_id, location_id, job_title, bio, color_code, is_active)
-            VALUES (%s, %s, %s, %s, %s, %s)
-            RETURNING id, user_id, location_id, job_title, bio, color_code, is_active
-        """
-        async with self.conn.cursor(row_factory=class_row(EmployeeResponse)) as cur:
-            await cur.execute(
-                query,
-                (
-                    employee_data.user_id,
-                    employee_data.location_id,
-                    employee_data.job_title,
-                    employee_data.bio,
-                    employee_data.color_code,
-                    employee_data.is_active,
-                ),
-            )
-            result = await cur.fetchone()
-            if not result:
-                raise RuntimeError("Failed to create employee")
-            return result
+        data = {
+            "user_id": employee_data.user_id,
+            "location_id": employee_data.location_id,
+            "job_title": employee_data.job_title,
+            "bio": employee_data.bio,
+            "color_code": employee_data.color_code,
+            "is_active": employee_data.is_active,
+        }
+        return await self._create(self.table, data, EmployeeResponse)
 
     async def update_employee(
         self, employee_id: UUID, employee_data: EmployeeUpdate
@@ -183,46 +169,12 @@ class EmployeeRepository(BaseRepository[EmployeeResponse]):
         Returns:
             Updated employee or None if not found
         """
-        from psycopg import sql
+        data = employee_data.model_dump(exclude_unset=True)
 
-        updates = []
-        params = []
-
-        if employee_data.job_title is not None:
-            updates.append(sql.SQL("{} = %s").format(sql.Identifier("job_title")))
-            params.append(employee_data.job_title)
-        if employee_data.bio is not None:
-            updates.append(sql.SQL("{} = %s").format(sql.Identifier("bio")))
-            params.append(employee_data.bio)
-        if employee_data.color_code is not None:
-            updates.append(sql.SQL("{} = %s").format(sql.Identifier("color_code")))
-            params.append(employee_data.color_code)
-        if employee_data.is_active is not None:
-            updates.append(sql.SQL("{} = %s").format(sql.Identifier("is_active")))
-            params.append(employee_data.is_active)
-        if employee_data.location_id is not None:
-            updates.append(sql.SQL("{} = %s").format(sql.Identifier("location_id")))
-            params.append(employee_data.location_id)
-
-        if not updates:
+        if not data:
             return await self.get_employee_by_id(employee_id)
 
-        set_clause = sql.SQL(", ").join(updates)
-        params.append(employee_id)
-
-        query = sql.Composed(
-            [
-                sql.SQL("UPDATE employees SET "),
-                set_clause,
-                sql.SQL(
-                    " WHERE id = %s RETURNING id, user_id, location_id, job_title, bio, color_code, is_active"
-                ),
-            ]
-        )
-
-        async with self.conn.cursor(row_factory=class_row(EmployeeResponse)) as cur:
-            await cur.execute(query, tuple(params))
-            return await cur.fetchone()
+        return await self._update(self.table, employee_id, data, EmployeeResponse)
 
     async def delete(self, employee_id: UUID) -> bool:
         """
@@ -258,9 +210,7 @@ class EmployeeRepository(BaseRepository[EmployeeResponse]):
             WHERE employee_id = %s
             ORDER BY day_of_week ASC, start_time ASC
         """
-        async with self.conn.cursor(row_factory=class_row(WorkingHoursResponse)) as cur:
-            await cur.execute(query, (employee_id,))
-            return await cur.fetchall()
+        return await self._execute_many(query, (employee_id,), WorkingHoursResponse)
 
     async def get_working_hours_for_day(
         self, employee_id: UUID, day_of_week: int
@@ -281,9 +231,7 @@ class EmployeeRepository(BaseRepository[EmployeeResponse]):
             WHERE employee_id = %s AND day_of_week = %s
             ORDER BY start_time ASC
         """
-        async with self.conn.cursor(row_factory=class_row(WorkingHoursResponse)) as cur:
-            await cur.execute(query, (employee_id, day_of_week))
-            return await cur.fetchall()
+        return await self._execute_many(query, (employee_id, day_of_week), WorkingHoursResponse)
 
     async def add_working_hours(
         self, working_hours_data: WorkingHoursCreate
@@ -297,25 +245,13 @@ class EmployeeRepository(BaseRepository[EmployeeResponse]):
         Returns:
             Created working hours
         """
-        query = """
-            INSERT INTO working_hours (employee_id, day_of_week, start_time, end_time)
-            VALUES (%s, %s, %s, %s)
-            RETURNING id, employee_id, day_of_week, start_time, end_time
-        """
-        async with self.conn.cursor(row_factory=class_row(WorkingHoursResponse)) as cur:
-            await cur.execute(
-                query,
-                (
-                    working_hours_data.employee_id,
-                    working_hours_data.day_of_week,
-                    working_hours_data.start_time,
-                    working_hours_data.end_time,
-                ),
-            )
-            result = await cur.fetchone()
-            if not result:
-                raise RuntimeError("Failed to add working hours")
-            return result
+        data = {
+            "employee_id": working_hours_data.employee_id,
+            "day_of_week": working_hours_data.day_of_week,
+            "start_time": working_hours_data.start_time,
+            "end_time": working_hours_data.end_time,
+        }
+        return await self._create("working_hours", data, WorkingHoursResponse)
 
     async def update_working_hours(
         self, working_hours_id: UUID, working_hours_data: WorkingHoursUpdate
@@ -330,42 +266,13 @@ class EmployeeRepository(BaseRepository[EmployeeResponse]):
         Returns:
             Updated working hours or None if not found
         """
-        from psycopg import sql
+        data = working_hours_data.model_dump(exclude_unset=True)
 
-        updates = []
-        params = []
-
-        if working_hours_data.start_time is not None:
-            updates.append(sql.SQL("{} = %s").format(sql.Identifier("start_time")))
-            params.append(working_hours_data.start_time)
-        if working_hours_data.end_time is not None:
-            updates.append(sql.SQL("{} = %s").format(sql.Identifier("end_time")))
-            params.append(working_hours_data.end_time)
-
-        if not updates:
+        if not data:
             query = "SELECT id, employee_id, day_of_week, start_time, end_time FROM working_hours WHERE id = %s"
-            async with self.conn.cursor(
-                row_factory=class_row(WorkingHoursResponse)
-            ) as cur:
-                await cur.execute(query, (working_hours_id,))
-                return await cur.fetchone()
+            return await self._execute_one(query, (working_hours_id,), WorkingHoursResponse)
 
-        set_clause = sql.SQL(", ").join(updates)
-        params.append(working_hours_id)
-
-        query = sql.Composed(
-            [
-                sql.SQL("UPDATE working_hours SET "),
-                set_clause,
-                sql.SQL(
-                    " WHERE id = %s RETURNING id, employee_id, day_of_week, start_time, end_time"
-                ),
-            ]
-        )
-
-        async with self.conn.cursor(row_factory=class_row(WorkingHoursResponse)) as cur:
-            await cur.execute(query, tuple(params))
-            return await cur.fetchone()
+        return await self._update("working_hours", working_hours_id, data, WorkingHoursResponse)
 
     async def delete_working_hours(self, working_hours_id: UUID) -> bool:
         """
@@ -401,7 +308,6 @@ class EmployeeRepository(BaseRepository[EmployeeResponse]):
         Returns:
             List of internal events
         """
-        from psycopg import sql
 
         conditions = [sql.SQL("employee_id = %s")]
         params: list = [employee_id]
@@ -426,11 +332,7 @@ class EmployeeRepository(BaseRepository[EmployeeResponse]):
             ]
         )
 
-        async with self.conn.cursor(
-            row_factory=class_row(InternalEventResponse)
-        ) as cur:
-            await cur.execute(query, tuple(params))
-            return await cur.fetchall()
+        return await self._execute_many(query, tuple(params), InternalEventResponse)
 
     async def add_internal_event(
         self, event_data: InternalEventCreate
@@ -444,28 +346,14 @@ class EmployeeRepository(BaseRepository[EmployeeResponse]):
         Returns:
             Created internal event
         """
-        query = """
-            INSERT INTO internal_events (employee_id, type, start_time, end_time, description)
-            VALUES (%s, %s, %s, %s, %s)
-            RETURNING id, employee_id, type, start_time, end_time, description
-        """
-        async with self.conn.cursor(
-            row_factory=class_row(InternalEventResponse)
-        ) as cur:
-            await cur.execute(
-                query,
-                (
-                    event_data.employee_id,
-                    event_data.type,
-                    event_data.start_time,
-                    event_data.end_time,
-                    event_data.description,
-                ),
-            )
-            result = await cur.fetchone()
-            if not result:
-                raise RuntimeError("Failed to add internal event")
-            return result
+        data = {
+            "employee_id": event_data.employee_id,
+            "type": event_data.type,
+            "start_time": event_data.start_time,
+            "end_time": event_data.end_time,
+            "description": event_data.description,
+        }
+        return await self._create("internal_events", data, InternalEventResponse)
 
     async def update_internal_event(
         self, event_id: UUID, event_data: InternalEventUpdate
@@ -480,50 +368,13 @@ class EmployeeRepository(BaseRepository[EmployeeResponse]):
         Returns:
             Updated internal event or None if not found
         """
-        from psycopg import sql
+        data = event_data.model_dump(exclude_unset=True)
 
-        updates = []
-        params = []
-
-        if event_data.type is not None:
-            updates.append(sql.SQL("{} = %s").format(sql.Identifier("type")))
-            params.append(event_data.type)
-        if event_data.start_time is not None:
-            updates.append(sql.SQL("{} = %s").format(sql.Identifier("start_time")))
-            params.append(event_data.start_time)
-        if event_data.end_time is not None:
-            updates.append(sql.SQL("{} = %s").format(sql.Identifier("end_time")))
-            params.append(event_data.end_time)
-        if event_data.description is not None:
-            updates.append(sql.SQL("{} = %s").format(sql.Identifier("description")))
-            params.append(event_data.description)
-
-        if not updates:
+        if not data:
             query = "SELECT id, employee_id, type, start_time, end_time, description FROM internal_events WHERE id = %s"
-            async with self.conn.cursor(
-                row_factory=class_row(InternalEventResponse)
-            ) as cur:
-                await cur.execute(query, (event_id,))
-                return await cur.fetchone()
+            return await self._execute_one(query, (event_id,), InternalEventResponse)
 
-        set_clause = sql.SQL(", ").join(updates)
-        params.append(event_id)
-
-        query = sql.Composed(
-            [
-                sql.SQL("UPDATE internal_events SET "),
-                set_clause,
-                sql.SQL(
-                    " WHERE id = %s RETURNING id, employee_id, type, start_time, end_time, description"
-                ),
-            ]
-        )
-
-        async with self.conn.cursor(
-            row_factory=class_row(InternalEventResponse)
-        ) as cur:
-            await cur.execute(query, tuple(params))
-            return await cur.fetchone()
+        return await self._update("internal_events", event_id, data, InternalEventResponse)
 
     async def delete_internal_event(self, event_id: UUID) -> bool:
         """

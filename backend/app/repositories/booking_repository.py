@@ -17,7 +17,7 @@ class BookingRepository(BaseRepository[BookingResponse]):
         self.table = "bookings"
 
     async def create_booking(self, data: dict) -> BookingResponse:
-        """Insert booking with default status and return with status name."""
+        """Insert booking with default status and return with joined names."""
 
         # Set default status if not provided
         if "status_id" not in data:
@@ -27,23 +27,46 @@ class BookingRepository(BaseRepository[BookingResponse]):
         columns_sql = sql.SQL(", ").join([sql.Identifier(k) for k in data.keys()])
         placeholders = sql.SQL(", ").join([sql.SQL("%s")] * len(data))
 
-        query = sql.Composed(
+        insert_query = sql.Composed(
             [
                 sql.SQL("INSERT INTO bookings ("),
                 columns_sql,
                 sql.SQL(") VALUES ("),
                 placeholders,
-                sql.SQL(""") RETURNING
-                id, customer_id, location_id, employee_id, service_variant_id,
-                start_time, end_time, total_price, customer_note, created_at,
-                (SELECT name FROM booking_statuses WHERE id = bookings.status_id) as status
-            """),
+                sql.SQL(") RETURNING id"),
             ]
         )
 
-        result = await self._execute_one(query, tuple(data.values()), BookingResponse)
-        if result is None:
+        # Insert and get the ID
+        cursor = await self.conn.execute(insert_query, tuple(data.values()))
+        row = await cursor.fetchone()
+        if row is None:
             raise NotFoundError("Failed to create booking")
+        booking_id = row[0]
+
+        # Fetch with JOINs
+        select_query = """
+            SELECT
+                b.id, b.customer_id, b.location_id, b.employee_id, b.service_variant_id,
+                b.start_time, b.end_time, b.total_price, b.customer_note, b.created_at,
+                bs.name as status,
+                sv.name as service_name,
+                l.name as location_name,
+                biz.name as business_name,
+                CONCAT(u.first_name, ' ', u.last_name) as employee_name
+            FROM bookings b
+            JOIN booking_statuses bs ON b.status_id = bs.id
+            LEFT JOIN service_variants sv ON b.service_variant_id = sv.id
+            LEFT JOIN locations l ON b.location_id = l.id
+            LEFT JOIN businesses biz ON l.business_id = biz.id
+            LEFT JOIN employees e ON b.employee_id = e.id
+            LEFT JOIN users u ON e.user_id = u.id
+            WHERE b.id = %s
+        """
+
+        result = await self._execute_one(select_query, (booking_id,), BookingResponse)
+        if result is None:
+            raise NotFoundError("Booking created but failed to fetch")
         return result
 
     async def get_booking_by_id(self, booking_id: UUID) -> Optional[BookingDetail]:

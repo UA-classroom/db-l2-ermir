@@ -188,7 +188,6 @@ class BookingService:
         3. For each employee, calculate free slots using ScheduleService.
         4. Aggregate results into a list of {start_time, [employee_ids]}.
         """
-        from app.services.schedule_service import ScheduleService
 
         # 1. Get Service Duration
         variant = await self.service_repo.get_service_variant_by_id(service_variant_id)

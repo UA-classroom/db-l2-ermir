@@ -45,7 +45,6 @@ async def create_booking(
     return await booking_service.create_booking(booking_data)
 
 
-# MOVED: /availability BEFORE /{booking_id} to fix route matching
 @router.get("/availability", response_model=AvailabilityResponse)
 async def check_availability(
     availability_request: Annotated[AvailabilityRequest, Depends()],

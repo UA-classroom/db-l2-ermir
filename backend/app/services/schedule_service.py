@@ -41,6 +41,7 @@ class ScheduleService:
         This is the core availability algorithm that checks:
         1. Employee working hours for that day
         2. Internal events (vacation, sick leave, meetings) that overlap
+        3. Existing bookings that conflict
 
         Args:
             employee_id: Employee UUID
@@ -106,6 +107,17 @@ class ScheduleService:
                         is_available=False,
                         reason=f"Employee has internal event: {event.type} ({event.start_time} - {event.end_time})",
                     )
+
+        # Step 4: Check for existing bookings
+        existing_bookings = await self.booking_repo.get_employee_bookings_in_range(
+            employee_id, start_time, end_time
+        )
+
+        if existing_bookings:
+            return AvailabilityResponse(
+                is_available=False,
+                reason="Employee already has a booking at this time",
+            )
 
         # All checks passed - employee is available
         return AvailabilityResponse(is_available=True, reason=None)
